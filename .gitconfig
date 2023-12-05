@@ -1,0 +1,24 @@
+[user]
+	email = jonathan.russ@bluewin.ch
+	name = Jonathan Russ
+	signingKey = 4E9F9EB05291578C3F5AEA7552F7E66BFEAAA07C
+[gpg]
+	program = gpg
+	format = openpgp
+[commit]
+	gpgSign = true
+[tag]
+	forceSignAnnotated = true
+[init]
+[core]
+	excludesfile = ~/.gitignore_global
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+[pull]
+	rebase = true
+[gpg "ssh"]
+	program = ssh-keygen
+	allowedSignersFile = ""
