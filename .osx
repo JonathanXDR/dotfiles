@@ -33,8 +33,51 @@ else
 fi
 
 ###############################################################################
-# General UI/UX                                                               #
+# System                                                                      #
 ###############################################################################
+
+# Disable boot sound effects
+sudo nvram SystemAudioVolume=" "
+
+# Reveal IP address, hostname, OS version, etc. when clicking login window clock
+sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
+
+# Disable launching of previously open applications upon reboot
+defaults write -g ApplePersistence -bool no
+
+# Disable automatic termination of inactive apps
+defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
+
+# Disable 'Are you sure you want to open this application?' dialog
+defaults write com.apple.LaunchServices LSQuarantine -bool false
+
+# Increase window resize speed for Cocoa applications
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
+
+# Disable window resume system-wide
+defaults write NSGlobalDomain NSQuitAlwaysKeepsWindows -bool false
+
+# Disable auto-correct
+defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
+
+# Disable smart quotes (not useful when writing code)
+defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
+
+# Disable smart dashes (not useful when writing code)
+defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
+
+# Require password immediately after sleep or screen saver begins
+defaults write com.apple.screensaver askForPassword -int 1
+defaults write com.apple.screensaver askForPasswordDelay -int 0
+
+# Avoid creating .DS_Store files on network volumes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+
+# Automatically restart if system freezes
+systemsetup -setrestartfreeze on
+
+# Disable software updates
+# sudo softwareupdate --schedule off
 
 # Expand save panel by default
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
@@ -43,7 +86,7 @@ defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
 
 # Save to disk (not to iCloud) by default
-defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+# defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 
 # Automatically quit printer app once the print jobs complete
 defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
@@ -76,6 +119,10 @@ defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
 defaults write com.apple.AppleMultitouchTrackpad TrackpadCornerSecondaryClick -int 2
 defaults write NSGlobalDomain ContextMenuGesture -int 1
 
+# defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadCornerSecondaryClick -int 2
+# defaults -currentHost write NSGlobalDomain com.apple.trackpad.trackpadCornerClickBehavior -int 1
+# defaults -currentHost write NSGlobalDomain com.apple.trackpad.enableSecondaryClick -bool true
+
 # Disable press-and-hold for keys in favor of key repeat
 defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
 
@@ -86,6 +133,33 @@ defaults write NSGlobalDomain KeyRepeat -int 1
 
 # Disable auto-correct
 defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
+
+# Automatically illuminate built-in MacBook keyboard in low light
+defaults write com.apple.BezelServices kDim -bool true
+
+# Turn off keyboard illumination when computer is not used for 5 minutes
+defaults write com.apple.BezelServices kDimTime -int 300
+
+# Enable keyboard access for all controls
+defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
+
+# Set a fast keyboard repeat rate
+defaults write NSGlobalDomain KeyRepeat -int 0
+
+# Enable tap to click for current user and the login screen
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+# Use CONTROL (^) with scroll to zoom
+defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
+
+# Follow keyboard focus while zoomed in
+defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
+
+# Increase sound quality for headphones/headsets
+defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
 
 ###############################################################################
 # Screen                                                                      #
@@ -115,16 +189,16 @@ defaults write com.apple.finder ShowHardDrivesOnDesktop -bool true
 defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
 defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
 
-# Finder: show hidden files by default
-# defaults write com.apple.finder AppleShowAllFiles -bool true
+# Show hidden files by default
+defaults write com.apple.finder AppleShowAllFiles -bool true
 
-# Finder: show all filename extensions
+# Show all filename extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
-# Finder: show status bar
-defaults write com.apple.finder ShowStatusBar -bool true
+# Show status bar
+# defaults write com.apple.finder ShowStatusBar -bool true
 
-# Finder: allow text selection in Quick Look
+# Allow text selection in Quick Look
 defaults write com.apple.finder QLEnableTextSelection -bool true
 
 # Display full POSIX path as Finder window title
@@ -161,6 +235,24 @@ defaults write com.apple.finder FXPreferredViewStyle -string "clmv"
 
 # Show the ~/Library folder
 chflags nohidden ~/Library
+
+# Show the $HOME/Library folder
+chflags nohidden $HOME/Library
+
+# Show path bar
+defaults write com.apple.finder ShowPathbar -bool true
+
+# Show status bar
+# defaults write com.apple.finder ShowStatusBar -bool true
+
+# Use list view in all Finder windows
+defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
+
+# Allow quitting via COMMAND+Q -- Doing so will also hide desktop icons
+defaults write com.apple.finder QuitMenuItem -bool true
+
+# Disable the warning before emptying the Trash
+defaults write com.apple.finder WarnOnEmptyTrash -bool false
 
 ###############################################################################
 # Dock, Dashboard, and hot corners                                            #
@@ -200,11 +292,24 @@ defaults write com.apple.dock wvous-tr-modifier -int 0
 defaults write com.apple.dock wvous-bl-corner -int 4
 defaults write com.apple.dock wvous-bl-modifier -int 0
 
+# Remove all default app icons
+defaults write com.apple.dock persistent-apps -array
+
+# Automatically hide and show
+# defaults write com.apple.dock autohide -bool true
+
+# Remove the auto-hiding delay
+# defaults write com.apple.Dock autohide-delay -float 0
+
+# Don't show Dashboard as a Space
+defaults write com.apple.dock "dashboard-in-overlay" -bool true
+
+
 ###############################################################################
 # Safari & WebKit                                                             #
 ###############################################################################
 
-# Enable the Develop menu and the Web Inspector in Safari
+# Enable the Develop menu and the Web Inspector
 defaults write com.apple.Safari IncludeDevelopMenu -bool true
 defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
 defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
@@ -212,12 +317,39 @@ defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebK
 # Add a context menu item for showing the Web Inspector in web views
 defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
 
+# Set home page to 'about:blank' for faster loading
+defaults write com.apple.Safari HomePage -string "about:blank"
+
+# Hide bookmarks bar
+defaults write com.apple.Safari ShowFavoritesBar -bool false
+
+# Use Contains instead of Starts With in search banners
+defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
+
+# Enable debug menu
+defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
+
+# Add a context menu item for showing the Web Inspector in web views
+defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
+
+# Disable sending search queries to Apple.
+defaults write com.apple.Safari UniversalSearchEnabled -bool false
+
 ###############################################################################
 # Mail                                                                        #
 ###############################################################################
 
-# Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>` in Mail.app
+# Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>`
 defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+
+# Disable send animation
+defaults write com.apple.mail DisableSendAnimations -bool true
+
+# Disable reply animation
+defaults write com.apple.mail DisableReplyAnimations -bool true
+
+# Enable COMMAND+ENTER to send mail
+defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" -string "@\\U21a9"
 
 ###############################################################################
 # Spotlight                                                                   #
@@ -240,7 +372,7 @@ fi
 # Show the main window when launching Activity Monitor
 defaults write com.apple.ActivityMonitor OpenMainWindow -bool true
 
-# Show all processes in Activity Monitor
+# Show all processes
 defaults write com.apple.ActivityMonitor ShowCategory -int 0
 
 ###############################################################################
@@ -259,6 +391,59 @@ defaults write com.apple.messageshelper.MessageController SOInputLineSettings -d
 
 # Disable in-app rating requests from apps downloaded from the App Store.
 defaults write com.apple.appstore InAppReviewEnabled -int 0
+
+# Enable the WebKit Developer Tools in the Mac App Store
+defaults write com.apple.appstore WebKitDeveloperExtras -bool true
+
+# Enable Debug Menu in the Mac App Store
+defaults write com.apple.appstore ShowDebugMenu -bool true
+
+###############################################################################
+# Address Book                                                                #
+###############################################################################
+
+# Enable debug menu
+defaults write com.apple.addressbook ABShowDebugMenu -bool true
+
+###############################################################################
+# Calendar                                                                    #
+###############################################################################
+
+# Enable debug menu
+defaults write com.apple.iCal IncludeDebugMenu -bool true
+
+###############################################################################
+# TextEdit                                                                    #
+###############################################################################
+
+# Use plain text mode for new documents
+defaults write com.apple.TextEdit RichText -int 0
+
+# Open and save files as UTF-8 encoding
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+###############################################################################
+# Disk Utility                                                                #
+###############################################################################
+
+# Enable debug menu
+defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true
+defaults write com.apple.DiskUtility advanced-image-options -bool true
+
+###############################################################################
+# Time Machine                                                                #
+###############################################################################
+
+# Prevent prompting to use new hard drives as backup volume
+defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
+
+###############################################################################
+# Chrome                                                                      #
+###############################################################################
+
+# Prevent native print dialog, use system dialog instead
+defaults write com.google.Chrome DisablePrintPreview -boolean true
 
 ###############################################################################
 # Kill/restart affected applications                                          #
