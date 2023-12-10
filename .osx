@@ -33,7 +33,14 @@ else
 fi
 
 ###############################################################################
-# System                                                                      #
+# Sound                                                                       #
+###############################################################################
+
+# Don't play sound on startup
+sudo nvram SystemAudioVolume=" "
+
+###############################################################################
+# Software Update                                                             #
 ###############################################################################
 
 # Install macOS updates
@@ -42,8 +49,17 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyI
 # Install application updates from the App Store
 sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
 
-# Disable boot sound effects
-sudo nvram SystemAudioVolume=" "
+###############################################################################
+# Accessibility - Zoom                                                        #
+###############################################################################
+
+# Use CONTROL (^) with scroll to zoom
+defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
+
+###############################################################################
+# Other Settings                                                              #
+###############################################################################
 
 # Reveal IP address, hostname, OS version, etc. when clicking login window clock
 sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
@@ -151,7 +167,7 @@ defaults write ~/Library/Preferences/ByHost/com.apple.controlcenter.plist Sound 
 
 
 ###############################################################################
-# Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
+# Trackpad                                                                    #
 ###############################################################################
 
 # Haptic feedback (light, silent clicking)
@@ -167,6 +183,10 @@ defaults write NSGlobalDomain ContextMenuGesture -int 1
 # defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadCornerSecondaryClick -int 2
 # defaults -currentHost write NSGlobalDomain com.apple.trackpad.trackpadCornerClickBehavior -int 1
 # defaults -currentHost write NSGlobalDomain com.apple.trackpad.enableSecondaryClick -bool true
+
+###############################################################################
+# Keyboard                                                                    #
+###############################################################################
 
 # Disable press-and-hold for keys in favor of key repeat
 defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
@@ -195,10 +215,6 @@ defaults write NSGlobalDomain KeyRepeat -int 0
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
-
-# Use CONTROL (^) with scroll to zoom
-defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
-defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
 
 # Follow keyboard focus while zoomed in
 defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
@@ -303,6 +319,18 @@ defaults write com.apple.finder WarnOnEmptyTrash -bool false
 # Dock, Dashboard, and hot corners                                            #
 ###############################################################################
 
+# Minimise windows using Scale Effect
+
+# Minimise windows into application icon
+
+# Don't Animate opening applications
+
+# Don't show suggested and recent apps in Dock
+
+# When switching to an application, switch to a Space with open windows for the application
+
+# Group windows by application
+
 # Set the icon size of Dock items
 defaults write com.apple.dock tilesize -int 30
 
@@ -327,18 +355,21 @@ defaults write com.apple.universalaccess reduceTransparency -bool true
 # 10: Put display to sleep
 # 11: Launchpad
 # 12: Notification Center
-# Bottom right screen corner → Mission Control
-defaults write com.apple.dock wvous-br-corner -int 2
+# Bottom right screen corner → Notification Center
+defaults write com.apple.dock wvous-br-corner -int 12
 defaults write com.apple.dock wvous-br-modifier -int 0
-# Top right screen corner → Put display to sleep
-defaults write com.apple.dock wvous-tr-corner -int 10
+# Top right screen corner → Notification Center
+defaults write com.apple.dock wvous-tr-corner -int 12
 defaults write com.apple.dock wvous-tr-modifier -int 0
-# Bottom left screen corner → Desktop
-defaults write com.apple.dock wvous-bl-corner -int 4
+# Bottom left screen corner → Launchpad
+defaults write com.apple.dock wvous-bl-corner -int 11
 defaults write com.apple.dock wvous-bl-modifier -int 0
+# Top left screen corner → no-op
+defaults write com.apple.dock wvous-tl-corner -int 0
+defaults write com.apple.dock wvous-tl-modifier -int 0
 
 # Remove all default app icons
-defaults write com.apple.dock persistent-apps -array
+# defaults write com.apple.dock persistent-apps -array
 
 # Automatically hide and show
 # defaults write com.apple.dock autohide -bool true
