@@ -36,6 +36,12 @@ fi
 # System                                                                      #
 ###############################################################################
 
+# Install macOS updates
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool true
+
+# Install application updates from the App Store
+sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
+
 # Disable boot sound effects
 sudo nvram SystemAudioVolume=" "
 
@@ -106,14 +112,53 @@ defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 osascript -e 'tell application "Finder" to set desktop picture to POSIX file "/System/Library/Desktop Pictures/Solid Colors/Stone.png"'
 
 ###############################################################################
+# Control Centre                                                              #
+###############################################################################
+
+# Show Wi-Fi in Menu Bar
+defaults write ~/Library/Preferences/ByHost/com.apple.controlcenter.plist WiFi -int 18
+
+# Always Show Sound in Menu Bar
+defaults write ~/Library/Preferences/ByHost/com.apple.controlcenter.plist Sound -int 18
+
+# - Accessibility Shortcuts
+# Show in Menu Bar: OFF
+# Show in Control Centre: ON
+
+# - Battery
+# Show in Menu Bar: ON
+# Show in Control Centre: ON
+# Show Percentage: ON
+
+# - Hearing
+# Show in Menu Bar: OFF
+# Show in Control Centre: ON
+
+# - Fast User Switching
+# Show in Menu Bar: Don't show
+# Show in Control Centre: ON
+
+# - Keyboard Brightness
+# Show in Menu Bar: OFF
+# Show in Control Centre: ON
+
+# - Clock Options
+# Show Date: Always
+# Display the time with seconds: ON
+
+# - Siri: Show in Menu Bar
+# - Time Machine: Show in Menu Bar
+
+
+###############################################################################
 # Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
 ###############################################################################
 
-# Trackpad: Haptic feedback (light, silent clicking)
+# Haptic feedback (light, silent clicking)
 defaults write com.apple.AppleMultitouchTrackpad FirstClickThreshold -int 0
 defaults write com.apple.AppleMultitouchTrackpad ActuationStrength -int 0
 
-# Trackpad: map bottom right corner to right-click (requires restart!)
+# map bottom right corner to right-click (requires restart!)
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadRightClick -bool true
 defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
 defaults write com.apple.AppleMultitouchTrackpad TrackpadCornerSecondaryClick -int 2
