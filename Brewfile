@@ -1,19 +1,110 @@
+tap "homebrew/autoupdate"
+tap "homebrew/bundle"
+tap "homebrew/cask"
+tap "homebrew/core"
+tap "homebrew/services"
+tap "hpedrorodrigues/tools"
+tap "ubuntu/microk8s"
+brew "python@3.11"
+brew "azure-cli"
+brew "bash"
+brew "cloudflared"
+brew "colima"
+brew "cowsay"
+brew "curl"
+brew "dockutil"
+brew "emacs"
+brew "node"
+brew "eslint"
+brew "ffmpeg"
+brew "gh"
+brew "git"
+brew "grep"
+brew "helm"
+brew "jq"
+brew "k9s"
+brew "lolcat"
+brew "mackup"
+brew "mariadb"
+brew "minikube"
+brew "nvm"
+brew "opa"
+brew "openjdk"
+brew "poetry"
+brew "postgresql@14"
+brew "prettier"
+brew "putty"
+brew "redis"
+brew "snyk-cli"
+brew "speedtest-cli"
+brew "swagger-codegen"
+brew "telnet"
+brew "vite"
+brew "wget"
+brew "yt-dlp"
+brew "zsh"
+cask "adobe-acrobat-reader", args: { appdir: "/Applications" }
+cask "aldente", args: { appdir: "/Applications" }
+cask "android-studio", args: { appdir: "/Applications" }
+cask "arc", args: { appdir: "/Applications" }
+cask "autodesk-fusion360", args: { appdir: "/Applications" }
+cask "bartender", args: { appdir: "/Applications" }
+cask "blender", args: { appdir: "/Applications" }
+cask "bricklink-studio", args: { appdir: "/Applications" }
+cask "citrix-workspace", args: { appdir: "/Applications" }
+cask "desmume", args: { appdir: "/Applications" }
+cask "discord", args: { appdir: "/Applications" }
+cask "docker", args: { appdir: "/Applications" }
+cask "dockutil"
+cask "dolphin", args: { appdir: "/Applications" }
+cask "fig", args: { appdir: "/Applications" }
+cask "figma", args: { appdir: "/Applications" }
+cask "focusrite-control-2", args: { appdir: "/Applications" }
+cask "github", args: { appdir: "/Applications" }
+cask "gitkraken", args: { appdir: "/Applications" }
+cask "google-chrome", args: { appdir: "/Applications" }
+cask "httpie", args: { appdir: "/Applications" }
+cask "intellij-idea", args: { appdir: "/Applications" }
+cask "intune-company-portal", args: { appdir: "/Applications" }
+cask "jetbrains-toolbox", args: { appdir: "/Applications" }
+cask "keyboardcleantool", args: { appdir: "/Applications" }
+cask "logi-options-plus", args: { appdir: "/Applications" }
+cask "microsoft-auto-update"
+cask "microsoft-teams", args: { appdir: "/Applications" }
+cask "minecraft", args: { appdir: "/Applications" }
+cask "miro", args: { appdir: "/Applications" }
+cask "mongodb-compass", args: { appdir: "/Applications" }
+cask "nordvpn", args: { appdir: "/Applications" }
+cask "notion", args: { appdir: "/Applications" }
+cask "obs", args: { appdir: "/Applications" }
+cask "openemu", args: { appdir: "/Applications" }
+cask "postman", args: { appdir: "/Applications" }
+cask "raycast", args: { appdir: "/Applications" }
+cask "sf-symbols", args: { appdir: "/Applications" }
+cask "soundsource", args: { appdir: "/Applications" }
+cask "steam", args: { appdir: "/Applications" }
+cask "tableplus", args: { appdir: "/Applications" }
+cask "tg-pro", args: { appdir: "/Applications" }
+cask "unity-hub", args: { appdir: "/Applications" }
+cask "visual-studio-code", args: { appdir: "/Applications" }
+cask "vivid", args: { appdir: "/Applications" }
 vscode "aaron-bond.better-comments"
 vscode "akamud.vscode-theme-onedark"
 vscode "alefragnani.Bookmarks"
 vscode "alefragnani.project-manager"
 vscode "alexcvzz.vscode-sqlite"
 vscode "austenc.tailwind-docs"
+vscode "axmmisaka.felonious-cpp-formatter"
 vscode "benjaminbenais.copilot-theme"
 vscode "bierner.markdown-preview-github-styles"
 vscode "bourhaouta.tailwindshades"
 vscode "bradlc.vscode-tailwindcss"
+vscode "castwide.solargraph"
 vscode "ChakrounAnas.turbo-console-log"
 vscode "ChaunceyKiwi.json-tree-view"
 vscode "christian-kohler.npm-intellisense"
 vscode "christian-kohler.path-intellisense"
 vscode "codeandstuff.package-json-upgrade"
-vscode "codemooseus.vscode-devtools-for-chrome"
 vscode "codezombiech.gitignore"
 vscode "csholmq.excel-to-markdown-table"
 vscode "CTC.vscode-tree-extension"
@@ -37,7 +128,6 @@ vscode "foxundermoon.shell-format"
 vscode "GitHub.codespaces"
 vscode "GitHub.copilot"
 vscode "GitHub.copilot-chat"
-vscode "GitHub.copilot-labs"
 vscode "GitHub.github-vscode-theme"
 vscode "GitHub.heygithub"
 vscode "GitHub.remotehub"
@@ -56,6 +146,7 @@ vscode "janisdd.vscode-edit-csv"
 vscode "JannisX11.batch-rename-extension"
 vscode "JFrog.jfrog-vscode-extension"
 vscode "jianbingfang.dupchecker"
+vscode "jnbt.vscode-rufo"
 vscode "jock.svg"
 vscode "kamikillerto.vscode-colorize"
 vscode "KevinRose.vsc-python-indent"
@@ -75,8 +166,12 @@ vscode "MS-CEINTL.vscode-language-pack-de"
 vscode "ms-dotnettools.csharp"
 vscode "ms-dotnettools.vscode-dotnet-runtime"
 vscode "ms-kubernetes-tools.vscode-kubernetes-tools"
+vscode "ms-mssql.data-workspace-vscode"
 vscode "ms-mssql.mssql"
+vscode "ms-mssql.sql-bindings-vscode"
+vscode "ms-mssql.sql-database-projects-vscode"
 vscode "ms-python.autopep8"
+vscode "ms-python.black-formatter"
 vscode "ms-python.isort"
 vscode "ms-python.python"
 vscode "ms-python.vscode-pylance"
@@ -86,11 +181,17 @@ vscode "ms-toolsai.jupyter-renderers"
 vscode "ms-toolsai.vscode-jupyter-cell-tags"
 vscode "ms-toolsai.vscode-jupyter-slideshow"
 vscode "ms-vscode-remote.remote-containers"
+vscode "ms-vscode-remote.remote-ssh"
+vscode "ms-vscode-remote.remote-ssh-edit"
 vscode "ms-vscode-remote.remote-wsl"
+vscode "ms-vscode-remote.vscode-remote-extensionpack"
 vscode "ms-vscode.azure-repos"
+vscode "ms-vscode.brackets-keybindings"
 vscode "ms-vscode.brackets-pack"
 vscode "ms-vscode.js-atom-grammar"
+vscode "ms-vscode.remote-explorer"
 vscode "ms-vscode.remote-repositories"
+vscode "ms-vscode.remote-server"
 vscode "ms-vsliveshare.vsliveshare"
 vscode "mtxr.sqltools"
 vscode "mwpb.java-prettier-formatter"
@@ -99,6 +200,7 @@ vscode "njpwerner.autodocstring"
 vscode "oderwat.indent-rainbow"
 vscode "Oracle.oracledevtools"
 vscode "PKief.material-icon-theme"
+vscode "plex.vscode-regolint"
 vscode "pranaygp.vscode-css-peek"
 vscode "Prisma.prisma"
 vscode "purocean.drawio-preview"
@@ -135,7 +237,9 @@ vscode "streetsidesoftware.code-spell-checker-german"
 vscode "svelte.svelte-vscode"
 vscode "syler.sass-indented"
 vscode "tamasfe.even-better-toml"
+vscode "testdouble.vscode-standard-ruby"
 vscode "tomoki1207.pdf"
+vscode "tsandall.opa"
 vscode "unclebeast.har-viewer"
 vscode "usernamehw.errorlens"
 vscode "VirejDasani.incredibly-in-your-face"
@@ -156,7 +260,6 @@ vscode "WallabyJs.quokka-vscode"
 vscode "WallabyJs.wallaby-vscode"
 vscode "wayou.vscode-icons-mac"
 vscode "wekex.JsonLint"
-vscode "withfig.fig"
 vscode "xabikos.JavaScriptSnippets"
 vscode "xaver.clang-format"
 vscode "yzane.markdown-pdf"
@@ -164,3 +267,4 @@ vscode "yzhang.markdown-all-in-one"
 vscode "zaaack.markdown-editor"
 vscode "Zarifprogrammer.tailwind-snippets"
 vscode "Zignd.html-css-class-completion"
+vscode "znck.vue"
