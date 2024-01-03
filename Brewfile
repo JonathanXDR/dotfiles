@@ -14,7 +14,7 @@ brew "cloudflared"
 brew "colima"
 brew "cowsay"
 brew "curl"
-brew "dockutil"
+brew "dockutil", link: false
 brew "emacs"
 brew "node"
 brew "eslint"
@@ -27,6 +27,7 @@ brew "grep"
 brew "helm"
 brew "jq"
 brew "k9s"
+brew "python@3.12"
 brew "lolcat"
 brew "mackup"
 brew "mariadb"
@@ -40,6 +41,7 @@ brew "poetry"
 brew "postgresql@14"
 brew "prettier"
 brew "putty"
+brew "pyenv"
 brew "redis"
 brew "snyk-cli"
 brew "speedtest-cli"
@@ -48,6 +50,7 @@ brew "swagger-codegen"
 brew "telnet"
 brew "vite"
 brew "wget"
+brew "xdelta"
 brew "yt-dlp"
 brew "zsh"
 cask "adobe-acrobat-reader", args: { appdir: "/Applications" }
@@ -57,7 +60,6 @@ cask "arc", args: { appdir: "/Applications" }
 cask "autodesk-fusion360", args: { appdir: "/Applications" }
 cask "bartender", args: { appdir: "/Applications" }
 cask "blender", args: { appdir: "/Applications" }
-cask "bricklink-studio", args: { appdir: "/Applications" }
 cask "citrix-workspace", args: { appdir: "/Applications" }
 cask "desmume", args: { appdir: "/Applications" }
 cask "discord", args: { appdir: "/Applications" }
@@ -95,6 +97,50 @@ cask "tg-pro", args: { appdir: "/Applications" }
 cask "unity-hub", args: { appdir: "/Applications" }
 cask "visual-studio-code", args: { appdir: "/Applications" }
 cask "vivid", args: { appdir: "/Applications" }
+mas "AdBlock Pro", id: 1018301773
+mas "Affinity Designer 2", id: 1616831348
+mas "Affinity Photo 2", id: 1616822987
+mas "Affinity Publisher 2", id: 1606941598
+mas "Alto's Adventure The Spirit of the Mountain", id: 1576663233
+mas "AngryBirdsReloaded", id: 1539172625
+mas "Apple Configurator", id: 1037126344
+mas "Asphalt 9", id: 1491129197
+mas "com.jbapps.MangoMacos", id: 1549961729
+mas "Compressor", id: 424390742
+mas "Developer", id: 640199958
+mas "Elmedia Video Player", id: 1044549675
+mas "Final Cut Pro", id: 424389933
+mas "GarageBand", id: 682658836
+mas "Goodnotes", id: 1444383602
+mas "Grammarly for Safari", id: 1462114288
+mas "Hand Mirror", id: 1502839586
+mas "iMovie", id: 408981434
+mas "JapanRural", id: 1634749545
+mas "Keynote", id: 409183694
+mas "Logic Pro", id: 634148309
+mas "Magnet", id: 441258766
+mas "MainStage", id: 634159523
+mas "Microsoft Excel", id: 462058435
+mas "Microsoft OneNote", id: 784801555
+mas "Microsoft Outlook", id: 985367838
+mas "Microsoft PowerPoint", id: 462062816
+mas "Microsoft To Do", id: 1274495053
+mas "Microsoft Word", id: 462054704
+mas "Motion", id: 434290957
+mas "Neon Beats", id: 1527569581
+mas "Numbers", id: 409203825
+mas "OneDrive", id: 823766827
+mas "Pages", id: 409201541
+mas "Paste", id: 967805235
+mas "Playgrounds", id: 1496833156
+mas "Reeder", id: 1529448980
+mas "Slack", id: 803453959
+mas "TestFlight", id: 899247664
+mas "The Lost City", id: 1538650027
+mas "The Unarchiver", id: 425424353
+mas "UTM", id: 1538878817
+mas "Xcode", id: 497799835
+mas "‎WhatsApp", id: 310633997
 vscode "aaron-bond.better-comments"
 vscode "akamud.vscode-theme-onedark"
 vscode "alefragnani.Bookmarks"
@@ -267,6 +313,7 @@ vscode "WallabyJs.quokka-vscode"
 vscode "WallabyJs.wallaby-vscode"
 vscode "wayou.vscode-icons-mac"
 vscode "wekex.JsonLint"
+vscode "withfig.fig"
 vscode "xabikos.JavaScriptSnippets"
 vscode "xaver.clang-format"
 vscode "yzane.markdown-pdf"

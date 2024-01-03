@@ -1,7 +1,7 @@
 [user]
 	email = jonathan.russ@bluewin.ch
 	name = Jonathan Russ
-	signingKey = ""
+	signingKey = 2FD8B9EEA9E84D5ABAA0C79822C95550BE0EE1C2
 [gpg]
 	program = gpg
 	format = openpgp
