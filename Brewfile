@@ -3,6 +3,7 @@ tap "homebrew/autoupdate"
 tap "homebrew/bundle"
 tap "homebrew/cask"
 tap "homebrew/cask-fonts"
+tap "homebrew/cask-versions"
 tap "homebrew/core"
 tap "homebrew/services"
 tap "hpedrorodrigues/tools"
@@ -11,6 +12,7 @@ brew "python@3.11"
 brew "azure-cli"
 brew "bash"
 brew "cloudflared"
+brew "cmake"
 brew "colima"
 brew "cowsay"
 brew "curl"
@@ -23,6 +25,9 @@ brew "gh"
 brew "git"
 brew "github-keygen"
 brew "gnupg"
+brew "go"
+brew "openjdk"
+brew "gradle"
 brew "grep"
 brew "helm"
 brew "jq"
@@ -35,26 +40,30 @@ brew "mas"
 brew "minikube"
 brew "nvm"
 brew "opa"
-brew "openjdk"
 brew "pinentry-mac"
 brew "poetry"
 brew "postgresql@14"
 brew "prettier"
 brew "putty"
 brew "pyenv"
+brew "react-native-cli"
 brew "redis"
+brew "rust"
 brew "snyk-cli"
 brew "speedtest-cli"
 brew "stow"
 brew "swagger-codegen"
 brew "telnet"
+brew "vercel-cli"
 brew "vite"
+brew "watchman"
 brew "wget"
 brew "xdelta"
 brew "yt-dlp"
 brew "zsh"
 cask "adobe-acrobat-reader", args: { appdir: "/Applications" }
 cask "aldente", args: { appdir: "/Applications" }
+cask "android-platform-tools"
 cask "android-studio", args: { appdir: "/Applications" }
 cask "arc", args: { appdir: "/Applications" }
 cask "autodesk-fusion360", args: { appdir: "/Applications" }
@@ -68,6 +77,7 @@ cask "dockutil"
 cask "dolphin", args: { appdir: "/Applications" }
 cask "fig", args: { appdir: "/Applications" }
 cask "figma", args: { appdir: "/Applications" }
+cask "flutter"
 cask "focusrite-control-2", args: { appdir: "/Applications" }
 cask "github", args: { appdir: "/Applications" }
 cask "gitkraken", args: { appdir: "/Applications" }
@@ -83,6 +93,7 @@ cask "microsoft-teams", args: { appdir: "/Applications" }
 cask "minecraft", args: { appdir: "/Applications" }
 cask "miro", args: { appdir: "/Applications" }
 cask "mongodb-compass", args: { appdir: "/Applications" }
+cask "ngrok"
 cask "nordvpn", args: { appdir: "/Applications" }
 cask "notion", args: { appdir: "/Applications" }
 cask "obs", args: { appdir: "/Applications" }
@@ -97,6 +108,7 @@ cask "tg-pro", args: { appdir: "/Applications" }
 cask "unity-hub", args: { appdir: "/Applications" }
 cask "visual-studio-code", args: { appdir: "/Applications" }
 cask "vivid", args: { appdir: "/Applications" }
+cask "zulu"
 mas "AdBlock Pro", id: 1018301773
 mas "Affinity Designer 2", id: 1616831348
 mas "Affinity Photo 2", id: 1616822987
@@ -178,6 +190,7 @@ vscode "figma.figma-vscode-extension"
 vscode "formulahendry.auto-close-tag"
 vscode "formulahendry.auto-rename-tag"
 vscode "foxundermoon.shell-format"
+vscode "fwcd.kotlin"
 vscode "GitHub.codespaces"
 vscode "GitHub.copilot"
 vscode "GitHub.copilot-chat"
@@ -206,6 +219,7 @@ vscode "KevinRose.vsc-python-indent"
 vscode "kodezi.kodezi"
 vscode "leizongmin.node-module-intellisense"
 vscode "lunuan.kubernetes-templates"
+vscode "mathiasfrohlich.Kotlin"
 vscode "mechatroner.rainbow-csv"
 vscode "meganrogge.template-string-converter"
 vscode "mgesbert.python-path"
