@@ -128,6 +128,8 @@ docker:cleanup() {
 npm:update() {
   npm i -g npm-check-updates
   ncu -u
+  rm -rf node_modules
+  rm -f package-lock.json
   npm install
 }
 
@@ -165,5 +167,10 @@ dock:reset() {
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
+PATH=~/.console-ninja/.bin:$PATH
+
 # Fig post block. Keep at the bottom of this file.
 [[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
