@@ -19,8 +19,10 @@ brew "cabal-install"
 brew "cloudflared"
 brew "cmake"
 brew "colima"
-brew "cowsay"
 brew "curl"
+brew "php"
+brew "composer"
+brew "cowsay"
 brew "dockutil", link: false
 brew "emacs"
 brew "node"
@@ -78,13 +80,13 @@ cask "bartender", args: { appdir: "/Applications" }
 cask "blender", args: { appdir: "/Applications" }
 cask "burp-suite"
 cask "citrix-workspace", args: { appdir: "/Applications" }
+cask "codewhisperer"
 cask "desmume", args: { appdir: "/Applications" }
 cask "discord", args: { appdir: "/Applications" }
 cask "docker", args: { appdir: "/Applications" }
 cask "dockutil"
 cask "dolphin", args: { appdir: "/Applications" }
 cask "dotnet-sdk"
-cask "fig", args: { appdir: "/Applications" }
 cask "figma", args: { appdir: "/Applications" }
 cask "flutter"
 cask "focusrite-control-2", args: { appdir: "/Applications" }
@@ -121,6 +123,7 @@ cask "tg-pro", args: { appdir: "/Applications" }
 cask "unity-hub", args: { appdir: "/Applications" }
 cask "visual-studio-code", args: { appdir: "/Applications" }
 cask "vivid", args: { appdir: "/Applications" }
+cask "vmware-fusion"
 cask "zulu"
 mas "AdBlock Pro", id: 1018301773
 mas "Affinity Designer 2", id: 1616831348
@@ -135,6 +138,7 @@ mas "Compressor", id: 424390742
 mas "Developer", id: 640199958
 mas "Elmedia Video Player", id: 1044549675
 mas "Final Cut Pro", id: 424389933
+mas "FreeScaler", id: 6443796196
 mas "GarageBand", id: 682658836
 mas "Goodnotes", id: 1444383602
 mas "Grammarly for Safari", id: 1462114288
@@ -171,10 +175,12 @@ vscode "akamud.vscode-theme-onedark"
 vscode "alefragnani.bookmarks"
 vscode "alefragnani.project-manager"
 vscode "alexcvzz.vscode-sqlite"
+vscode "amazonwebservices.codewhisperer-for-command-line-companion"
 vscode "austenc.tailwind-docs"
 vscode "axmmisaka.felonious-cpp-formatter"
 vscode "benjaminbenais.copilot-theme"
 vscode "bierner.markdown-preview-github-styles"
+vscode "bmewburn.vscode-intelephense-client"
 vscode "bourhaouta.tailwindshades"
 vscode "bradlc.vscode-tailwindcss"
 vscode "capaj.vscode-standardjs-snippets"
@@ -193,6 +199,10 @@ vscode "dalirnet.mongod-config"
 vscode "dariofuzinato.vue-peek"
 vscode "davidanson.vscode-markdownlint"
 vscode "dbaeumer.vscode-eslint"
+vscode "devsense.composer-php-vscode"
+vscode "devsense.intelli-php-vscode"
+vscode "devsense.phptools-vscode"
+vscode "devsense.profiler-php-vscode"
 vscode "dgileadi.java-decompiler"
 vscode "dotjoshjohnson.xml"
 vscode "eamodio.gitlens"
@@ -306,10 +316,12 @@ vscode "redhat.vscode-quarkus"
 vscode "redhat.vscode-redhat-account"
 vscode "redhat.vscode-xml"
 vscode "redhat.vscode-yaml"
+vscode "rifi2k.format-html-in-php"
 vscode "ritwickdey.liveserver"
 vscode "roerohan.mongo-snippets-for-node-js"
 vscode "rogalmic.bash-debug"
 vscode "rvest.vs-code-prettier-eslint"
+vscode "sansbrina.garbage-oracle"
 vscode "sapse.vscode-cds"
 vscode "sdras.vue-vscode-snippets"
 vscode "sgryjp.vscode-stable-sort"
@@ -334,6 +346,7 @@ vscode "tobiah.unity-tools"
 vscode "tomoki1207.pdf"
 vscode "tsandall.opa"
 vscode "unclebeast.har-viewer"
+vscode "unifiedjs.vscode-mdx"
 vscode "usernamehw.errorlens"
 vscode "virejdasani.incredibly-in-your-face"
 vscode "visualstudioexptteam.intellicode-api-usage-examples"
@@ -355,9 +368,9 @@ vscode "wallabyjs.quokka-vscode"
 vscode "wallabyjs.wallaby-vscode"
 vscode "wayou.vscode-icons-mac"
 vscode "wekex.jsonlint"
-vscode "withfig.fig"
 vscode "xabikos.javascriptsnippets"
 vscode "xaver.clang-format"
+vscode "xyc.vscode-mdx-preview"
 vscode "yclepticstudios.unity-snippets"
 vscode "yzane.markdown-pdf"
 vscode "yzhang.markdown-all-in-one"
