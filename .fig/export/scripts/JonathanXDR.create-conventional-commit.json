@@ -1,0 +1,103 @@
+{
+  "uuid": "df040863-db13-42e9-8b10-1b5c0ae8574c",
+  "name": "create-conventional-commit",
+  "displayName": "Create conventional commit",
+  "description": "Creates a conventional commit.",
+  "templateVersion": 2,
+  "tags": [
+    "git"
+  ],
+  "rules": [],
+  "steps": [
+    {
+      "name": null,
+      "parameters": [
+        {
+          "name": "type",
+          "displayName": "Type of change",
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "selector",
+          "typeData": {
+            "placeholder": "Select a type",
+            "suggestions": [
+              "build",
+              "ci",
+              "docs",
+              "feat",
+              "fix",
+              "perf",
+              "refactor",
+              "revert",
+              "style",
+              "test"
+            ],
+            "generators": null,
+            "allowRawTextInput": null,
+            "multi": null
+          },
+          "cli": {
+            "short": null,
+            "long": "type",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        },
+        {
+          "name": "message",
+          "displayName": "What's changed?",
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "text",
+          "typeData": {
+            "placeholder": "moved files around"
+          },
+          "cli": {
+            "short": null,
+            "long": "message",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        }
+      ]
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "git commit -m '",
+        {
+          "name": "type"
+        },
+        ": ",
+        {
+          "name": "message"
+        },
+        "'"
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

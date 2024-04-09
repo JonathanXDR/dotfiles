@@ -1,0 +1,33 @@
+{
+  "uuid": "da1a5eac-98d8-4373-91d4-d888185c5ed2",
+  "name": "undo",
+  "displayName": "Undo last commit",
+  "description": "Rewind current branch back one commit. (Changes are preserved)",
+  "templateVersion": 2,
+  "tags": [
+    "git"
+  ],
+  "rules": [],
+  "steps": [
+    {
+      "name": null,
+      "parameters": []
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "git reset --soft HEAD~1"
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

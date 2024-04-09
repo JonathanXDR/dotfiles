@@ -1,0 +1,60 @@
+{
+  "uuid": "9fe33f2c-38f0-4811-a79f-0b88e0e798dc",
+  "name": "create-new-branch",
+  "displayName": "Create new branch",
+  "description": "Create a new git branch",
+  "templateVersion": 2,
+  "tags": [
+    "git"
+  ],
+  "rules": [],
+  "steps": [
+    {
+      "name": null,
+      "parameters": [
+        {
+          "name": "branch-name",
+          "displayName": "Branch Name",
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "text",
+          "typeData": {
+            "placeholder": "my-awesome-feature"
+          },
+          "cli": {
+            "short": null,
+            "long": "branch-name",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        }
+      ]
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "git checkout -b ",
+        {
+          "name": "branch-name"
+        }
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

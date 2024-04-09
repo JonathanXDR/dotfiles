@@ -25,5 +25,7 @@ add-zsh-hook chpwd load-nvmrc
 nvm:update
 nvmrc:load
 
+[[ -f "$HOME/.fig/export/dotfiles/dotfile.zsh" ]] && builtin source "$HOME/.fig/export/dotfiles/dotfile.zsh"
+
 # CodeWhisperer post block. Keep at the bottom of this file.
 [[ -f "${HOME}/Library/Application Support/codewhisperer/shell/zshrc.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/codewhisperer/shell/zshrc.post.zsh"

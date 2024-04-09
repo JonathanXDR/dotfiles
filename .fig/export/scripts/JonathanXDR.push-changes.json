@@ -1,0 +1,61 @@
+{
+  "uuid": "961583f0-06fe-4083-a379-407717f219e8",
+  "name": "push-changes",
+  "displayName": "Push all changes",
+  "description": "Add all changes, commit & push!",
+  "templateVersion": 2,
+  "tags": [
+    "git"
+  ],
+  "rules": [],
+  "steps": [
+    {
+      "name": null,
+      "parameters": [
+        {
+          "name": "message",
+          "displayName": "Message",
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "text",
+          "typeData": {
+            "placeholder": "fixed all the bugs "
+          },
+          "cli": {
+            "short": null,
+            "long": "message",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        }
+      ]
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "git add -A\ngit commit -m '",
+        {
+          "name": "message"
+        },
+        "'\ngit push -u # -u to create upstream branch"
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

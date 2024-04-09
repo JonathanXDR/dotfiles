@@ -1,0 +1,92 @@
+{
+  "uuid": "9eadbabc-be64-4109-ade0-503e885cd950",
+  "name": "update-node-module",
+  "displayName": "Update node_module",
+  "description": "Reads package.json and re-installs a given node_module.",
+  "templateVersion": 2,
+  "tags": [
+    "node",
+    "npm"
+  ],
+  "rules": [
+    [
+      {
+        "key": "Contents-Of-Directory",
+        "specifier": null,
+        "predicate": "CONTAINS",
+        "inverted": false,
+        "value": "package.json"
+      }
+    ]
+  ],
+  "steps": [
+    {
+      "name": null,
+      "parameters": [
+        {
+          "name": "package",
+          "displayName": null,
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "selector",
+          "typeData": {
+            "placeholder": null,
+            "suggestions": [],
+            "generators": [
+              {
+                "type": "script",
+                "script": "# fig:\nnpm list -p --depth=0 | grep node_modules | cut -c $(expr ${#PWD} + 15)-",
+                "tree": [
+                  "# fig:\nnpm list -p --depth=0 | grep node_modules | cut -c $(expr ${#PWD} + 15)-"
+                ]
+              }
+            ],
+            "allowRawTextInput": null,
+            "multi": null
+          },
+          "cli": {
+            "short": null,
+            "long": "package",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        }
+      ]
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "YARN_LOCKFILE=yarn.lock\nPNPM_LOCKFILE=pnpm-lock.yaml\nNPM_LOCKFILE=package-lock.json\n\n# Determines what package manager to use based on lockfile.\n \nif [ -f \"$YARN_LOCKFILE\" ]\nthen\n\techo \"Using yarn...\"\n\tyarn upgrade ",
+        {
+          "name": "package"
+        },
+        "\n\t\nelif [ -f \"$PNPM_LOCKFILE\" ]\nthen\n\techo \"Using pnpm\"\n\tpnpm up ",
+        {
+          "name": "package"
+        },
+        "\t\n\t\nelif [ -f \"$NPM_LOCKFILE\" ]\nthen\n\techo \"Using npm\"\n\tnpm update ",
+        {
+          "name": "package"
+        },
+        " \n\nelse\n\techo \"ERROR: No lockfile found!\""
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

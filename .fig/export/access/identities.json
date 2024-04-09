@@ -1,0 +1,12 @@
+[
+  {
+    "username": "id_ed25519",
+    "displayName": "id_ed25519",
+    "pathToAuth": "id_ed25519",
+    "remoteId": 3314,
+    "namespace": null,
+    "privateKey": "",
+    "authenticationType": "path",
+    "password": ""
+  }
+]

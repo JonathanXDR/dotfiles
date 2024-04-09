@@ -1,0 +1,106 @@
+{
+  "uuid": "f387da48-ea95-47ab-9c91-955609fe3f3e",
+  "name": "start-vite-project",
+  "displayName": "Start a Vite Project",
+  "description": "Choose from a list of templates to start a Vite project.",
+  "templateVersion": 2,
+  "tags": [
+    "node",
+    "npm",
+    "vite"
+  ],
+  "rules": [],
+  "steps": [
+    {
+      "name": null,
+      "parameters": [
+        {
+          "name": "project-name",
+          "displayName": null,
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "text",
+          "typeData": {
+            "placeholder": ""
+          },
+          "cli": {
+            "short": null,
+            "long": "project-name",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        },
+        {
+          "name": "template",
+          "displayName": null,
+          "description": null,
+          "dependsOn": [],
+          "required": null,
+          "type": "selector",
+          "typeData": {
+            "placeholder": "Select a template",
+            "suggestions": [
+              "vanilla",
+              "vanilla-ts",
+              "vue",
+              "vue-ts",
+              "react",
+              "react-ts",
+              "preact",
+              "preact-ts",
+              "lit",
+              "lit-ts",
+              "svelte",
+              "svelte-ts"
+            ],
+            "generators": null,
+            "allowRawTextInput": null,
+            "multi": null
+          },
+          "cli": {
+            "short": null,
+            "long": "template",
+            "required": true,
+            "require_equals": false,
+            "type": {
+              "String": {
+                "default": null
+              }
+            },
+            "raw": false
+          }
+        }
+      ]
+    },
+    {
+      "name": null,
+      "runtime": "BASH",
+      "tree": [
+        "npm create vite ",
+        {
+          "name": "project-name"
+        },
+        " -- --template ",
+        {
+          "name": "template"
+        }
+      ]
+    }
+  ],
+  "namespace": "JonathanXDR",
+  "isOwnedByUser": true,
+  "lastInvokedAt": null,
+  "lastInvokedAtByUser": null,
+  "invocationTrackStderr": false,
+  "invocationTrackStdout": false,
+  "invocationTrackInputs": false,
+  "invocationDisableTrack": false,
+  "shouldCache": true
+}

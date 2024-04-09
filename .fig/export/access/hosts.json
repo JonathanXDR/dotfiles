@@ -1,0 +1,68 @@
+[
+  {
+    "nickName": "github.com",
+    "ip": "github.com",
+    "remoteId": 8685,
+    "tags": [],
+    "description": "",
+    "connections": [
+      {
+        "remoteId": 8461,
+        "connectionType": "ssh",
+        "port": 22,
+        "defaultIdentityId": 3314,
+        "identityIds": [
+          3314
+        ],
+        "portForwards": [],
+        "remoteHostId": null,
+        "remoteHostIdentityId": null
+      }
+    ],
+    "namespace": null
+  },
+  {
+    "nickName": "gitlab.com",
+    "ip": "gitlab.com",
+    "remoteId": 8686,
+    "tags": [],
+    "description": "",
+    "connections": [
+      {
+        "remoteId": 8462,
+        "connectionType": "ssh",
+        "port": 22,
+        "defaultIdentityId": 3314,
+        "identityIds": [
+          3314
+        ],
+        "portForwards": [],
+        "remoteHostId": null,
+        "remoteHostIdentityId": null
+      }
+    ],
+    "namespace": null
+  },
+  {
+    "nickName": "git.swisscom.com",
+    "ip": "git.swisscom.com",
+    "remoteId": 8687,
+    "tags": [],
+    "description": "",
+    "connections": [
+      {
+        "remoteId": 8463,
+        "connectionType": "ssh",
+        "port": 22,
+        "defaultIdentityId": 3314,
+        "identityIds": [
+          3314
+        ],
+        "portForwards": [],
+        "remoteHostId": null,
+        "remoteHostIdentityId": null
+      }
+    ],
+    "namespace": null
+  }
+]
