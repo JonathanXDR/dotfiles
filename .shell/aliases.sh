@@ -21,7 +21,7 @@ alias ssh='ssh -o AddKeysToAgent=yes'
 alias bash="PERMIT_BASH=true bash"
 
 alias ez="${EDITOR} ${HOME}/.zshrc"
-alias es="${EDITOR} ${HOME}/bashrc"
+alias eb="${EDITOR} ${HOME}/.bashrc"
 alias ef="${EDITOR} ${HOME}/.shell/func.sh"
 alias ev="${EDITOR} ${HOME}/.shell/vars.sh"
 alias ea="${EDITOR} ${HOME}/.shell/aliases.sh"
