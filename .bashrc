@@ -10,7 +10,6 @@
 [[ -f "${HOME}/Library/Application Support/codewhisperer/shell/bashrc.post.bash" ]] && builtin source "${HOME}/Library/Application Support/codewhisperer/shell/bashrc.post.bash"
 
 # Load custom files
-# for file in vars aliases func; do
-for file in vars func; do
+for file in vars aliases func; do
     [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
