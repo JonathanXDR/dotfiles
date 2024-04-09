@@ -1,4 +1,4 @@
-proxyUnset() {
+proxy:unset() {
   unset http_proxy
   unset HTTP_PROXY
   unset https_proxy
@@ -25,7 +25,7 @@ composeProxyAddr() {
   echo "${proxyProtocol}://${proxyHost}:${proxyPort}"
 }
 
-proxySet() {
+proxy:set() {
   if (( $# < 3 )) ; then
     echo "Syntax: proxySet proxyProtocol proxyHost proxyPort [noProxy]"
     return 1
@@ -52,7 +52,7 @@ proxySet() {
 }
 
 RESOLF='/etc/resolv.conf'
-changeDNS() {
+dns:change() {
   if (( $# < 1 )) ; then
     return 1;
   fi
@@ -65,13 +65,13 @@ changeDNS() {
   done
 }
 
-changeWSLDNS() {
+wsl:change-dns() {
   sudo chattr -i "${RESOLF}"
   changeDNS "${1}"
   sudo chattr +i "${RESOLF}"
 }
 
-proxyProbe() {
+proxy:probe() {
   local matchDNS="dns"
   local withDNS="${1}"
   if nc -z -w 3 ${PROXY_HOST} ${PROXY_PORT} &> /dev/null; then
@@ -89,7 +89,7 @@ proxyProbe() {
   fi
 }
 
-awsProxy() {
+proxy:aws() {
   local proxyArgs=("${AWS_PROXY_PROTOCOL}" "${AWS_PROXY_HOST}" "${AWS_PROXY_PORT}")
   local proxyAddr="$(composeProxyAddr ${proxyArgs[@]})"
 
@@ -100,13 +100,13 @@ awsProxy() {
   fi
 }
 
-changeCluster() {
+cluster:change() {
   local clusterName="${1:-$AWS_CLUSTER_NAME}"
   export AWS_CLUSTER_NAME="${clusterName}"
   aws eks update-kubeconfig --name "${AWS_CLUSTER_NAME}" --region "${AWS_REGION}"
 }
 
-wslSetDisplay() {
+wsl:set-display() {
   local ipconfig="/mnt/c/Windows/System32/ipconfig.exe"
   local grepip=("grep" "-oP" '(?<=IPv4 Address(?:\.\s){11}:\s)((?:\d+\.){3}\d+)')
 
@@ -123,7 +123,7 @@ wslSetDisplay() {
 }
 
 #SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
-sshReagent () {
+ssh:reagent () {
   for agent in /tmp/ssh-*/agent.*; do
     export SSH_AUTH_SOCK=$agent
       if ssh-add -l 2>&1 > /dev/null; then
@@ -135,6 +135,6 @@ sshReagent () {
   echo Cannot find ssh agent - maybe you should reconnect and forward it?
 }
 
-sshAgent() {
+ssh:agent() {
   pgrep -x ssh-agent &> /dev/null && sshReagent &> /dev/null || eval $(ssh-agent) &> /dev/null
 }
