@@ -3,6 +3,42 @@ cmd:exists() {
   command -v "$1" &> /dev/null
 }
 
+RESOLF='/etc/resolv.conf'
+dns:change() {
+  if (( $# < 1 )) ; then
+    return 1;
+  fi
+
+  local nameservers=("${(@s/,/)1}")
+
+  sudo truncate -s 0 "${RESOLF}"
+  for nameServerIP in ${nameservers[@]}; do
+    echo "nameserver ${nameServerIP}" | sudo tee -a "${RESOLF}" > /dev/null
+  done
+}
+
+wsl:change-dns() {
+  sudo chattr -i "${RESOLF}"
+  dns:change "${1}"
+  sudo chattr +i "${RESOLF}"
+}
+
+wsl:set-display() {
+  local ipconfig="/mnt/c/Windows/System32/ipconfig.exe"
+  local grepip=("grep" "-oP" '(?<=IPv4 Address(?:\.\s){11}:\s)((?:\d+\.){3}\d+)')
+
+  if [[ ! -d "/mnt/c/Windows" ]]; then
+    return
+  fi
+
+  local display=$("${ipconfig}" | grep -A 3 "${ENTERPRISE_DOMAIN}" | "${grepip[@]}")
+  if [[ -n "${display}" ]]; then
+    export DISPLAY="${display}:0.0"
+    return
+  fi
+  export DISPLAY=$("${ipconfig}" | grep -A 5 "vEthernet (WSL)" | "${grepip[@]}"):0.0
+}
+
 proxy:compose-addr() {
   if (( $# != 3 )) ; then
     return 1;
@@ -83,42 +119,6 @@ proxy:aws() {
   else
     proxy:unset
   fi
-}
-
-RESOLF='/etc/resolv.conf'
-dns:change() {
-  if (( $# < 1 )) ; then
-    return 1;
-  fi
-
-  local nameservers=("${(@s/,/)1}")
-
-  sudo truncate -s 0 "${RESOLF}"
-  for nameServerIP in ${nameservers[@]}; do
-    echo "nameserver ${nameServerIP}" | sudo tee -a "${RESOLF}" > /dev/null
-  done
-}
-
-wsl:change-dns() {
-  sudo chattr -i "${RESOLF}"
-  dns:change "${1}"
-  sudo chattr +i "${RESOLF}"
-}
-
-wsl:set-display() {
-  local ipconfig="/mnt/c/Windows/System32/ipconfig.exe"
-  local grepip=("grep" "-oP" '(?<=IPv4 Address(?:\.\s){11}:\s)((?:\d+\.){3}\d+)')
-
-  if [[ ! -d "/mnt/c/Windows" ]]; then
-    return
-  fi
-
-  local display=$("${ipconfig}" | grep -A 3 "${ENTERPRISE_DOMAIN}" | "${grepip[@]}")
-  if [[ -n "${display}" ]]; then
-    export DISPLAY="${display}:0.0"
-    return
-  fi
-  export DISPLAY=$("${ipconfig}" | grep -A 5 "vEthernet (WSL)" | "${grepip[@]}"):0.0
 }
 
 #SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
