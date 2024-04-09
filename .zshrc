@@ -9,10 +9,6 @@
 eval "$(pyenv init --path)"
 autoload -U add-zsh-hook
 
-add-zsh-hook chpwd load-nvmrc
-nvm:update
-load-nvmrc
-
 # bun completions
 [ -s "/Users/jonathan/.bun/_bun" ] && source "/Users/jonathan/.bun/_bun"
 
@@ -22,9 +18,12 @@ for file in vars func; do
   [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
 
-# Custom function Configs
 # Set up proxy if in VPN or not
 [[ "${ALWAYS_PROXY_PROBE}" == "true" ]] && proxy:probe
+
+add-zsh-hook chpwd load-nvmrc
+nvm:update
+nvmrc:load
 
 # CodeWhisperer post block. Keep at the bottom of this file.
 [[ -f "${HOME}/Library/Application Support/codewhisperer/shell/zshrc.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/codewhisperer/shell/zshrc.post.zsh"
