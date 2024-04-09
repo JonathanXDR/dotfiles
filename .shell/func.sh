@@ -3,7 +3,6 @@ cmd:exists() {
   command -v "$1" &> /dev/null
 }
 
-RESOLF='/etc/resolv.conf'
 dns:change() {
   if (( $# < 1 )) ; then
     return 1;
@@ -56,10 +55,10 @@ proxy:set() {
     source "${HOME}/.shell/vars.sh"
   fi
 
-  local proxyProtocol="${1:-${PROXY_PROTOCOL}}}"
-  local proxyHost="${2:-${PROXY_HOST}}}"
-  local proxyPort="${3:-${PROXY_PORT}}}"
-  local noProxy="${4:-${NOPROXY}}}"
+  local proxyProtocol="${1:-${PROXY_PROTOCOL}}"
+  local proxyHost="${2:-${PROXY_HOST}}"
+  local proxyPort="${3:-${PROXY_PORT}}"
+  local noProxy="${4:-${NOPROXY}}"
   
   local proxyAddr="$(proxy:compose-addr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
   

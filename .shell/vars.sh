@@ -26,6 +26,7 @@ export BUN_INSTALL="${HOME}/.bun"
 export NVM_DIR="${HOME}/.nvm"
 
 export EDITOR="nano"
+export RESOLF='/etc/resolv.conf'
 
 export PATH="${BUN_INSTALL}/bin:${PATH}"
 export PATH="${PATH}:${HOME}/.rvm/bin"
