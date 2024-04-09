@@ -4,38 +4,19 @@ cmd:exists() {
 }
 
 dns:change() {
-  if (( $# < 1 )) ; then
+  if (( $# < 2 )) ; then
+    echo "Usage: dns:change <network service name> <DNS IPs separated by commas>"
     return 1;
   fi
 
-  local nameservers=("${(@s/,/)1}")
+  local networkServiceName="$1"
+  local nameservers=("${(@s/,/)2}") 
 
-  sudo truncate -s 0 "${RESOLF}"
+  sudo networksetup -setdnsservers "${networkServiceName}" "Empty"
+
   for nameServerIP in ${nameservers[@]}; do
-    echo "nameserver ${nameServerIP}" | sudo tee -a "${RESOLF}" > /dev/null
+    sudo networksetup -setdnsservers "${networkServiceName}" "${nameServerIP}"
   done
-}
-
-wsl:change-dns() {
-  sudo chattr -i "${RESOLF}"
-  dns:change "${1}"
-  sudo chattr +i "${RESOLF}"
-}
-
-wsl:set-display() {
-  local ipconfig="/mnt/c/Windows/System32/ipconfig.exe"
-  local grepip=("grep" "-oP" '(?<=IPv4 Address(?:\.\s){11}:\s)((?:\d+\.){3}\d+)')
-
-  if [[ ! -d "/mnt/c/Windows" ]]; then
-    return
-  fi
-
-  local display=$("${ipconfig}" | grep -A 3 "${ENTERPRISE_DOMAIN}" | "${grepip[@]}")
-  if [[ -n "${display}" ]]; then
-    export DISPLAY="${display}:0.0"
-    return
-  fi
-  export DISPLAY=$("${ipconfig}" | grep -A 5 "vEthernet (WSL)" | "${grepip[@]}"):0.0
 }
 
 proxy:compose-addr() {
