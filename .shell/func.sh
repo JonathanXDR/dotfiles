@@ -13,7 +13,7 @@ proxy:unset() {
   unset MAVEN_OPTS
 }
 
-composeProxyAddr() {
+proxy:compose-addr() {
   if (( $# != 3 )) ; then
     return 1;
   fi
@@ -35,7 +35,7 @@ proxy:set() {
   local proxyHost="${2}"
   local proxyPort="${3}"
   local noProxy="${4}"
-  local proxyAddr="$(composeProxyAddr ${proxyProtocol} ${proxyHost} ${proxyPort})"
+  local proxyAddr="$(composeProxyAddr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
 
   export http_proxy="${proxyAddr}"
   export HTTP_PROXY="${proxyAddr}"
@@ -74,7 +74,7 @@ wsl:change-dns() {
 proxy:probe() {
   local matchDNS="dns"
   local withDNS="${1}"
-  if nc -z -w 3 ${PROXY_HOST} ${PROXY_PORT} &> /dev/null; then
+  if nc -z -w 3 "${PROXY_HOST}" "${PROXY_PORT}" &> /dev/null; then
     # echo "proxyProbe: Detected VPN, turning on proxy."
     proxySet "${PROXY_PROTOCOL}" "${PROXY_HOST}" "${PROXY_PORT}" "${NOPROXY}"
     if [[ "${(L)withDNS}" = "${matchDNS}" ]]; then
@@ -101,7 +101,7 @@ proxy:aws() {
 }
 
 cluster:change() {
-  local clusterName="${1:-$AWS_CLUSTER_NAME}"
+  local clusterName="${1:-${AWS_CLUSTER_NAME}}"
   export AWS_CLUSTER_NAME="${clusterName}"
   aws eks update-kubeconfig --name "${AWS_CLUSTER_NAME}" --region "${AWS_REGION}"
 }
@@ -125,7 +125,7 @@ wsl:set-display() {
 #SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
 ssh:reagent () {
   for agent in /tmp/ssh-*/agent.*; do
-    export SSH_AUTH_SOCK=$agent
+    export SSH_AUTH_SOCK=${agent}
       if ssh-add -l 2>&1 > /dev/null; then
         echo Found working SSH Agent:
         ssh-add -l
