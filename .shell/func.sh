@@ -52,17 +52,17 @@ proxy:compose-addr() {
 }
 
 proxy:set() {
-  if (( $# < 3 )) ; then
-    echo "Syntax: proxy:set proxyProtocol proxyHost proxyPort [noProxy]"
-    return 1
+  if [[ -z "${PROXY_PROTOCOL}" || -z "${PROXY_HOST}" || -z "${PROXY_PORT}" ]]; then
+    source "${HOME}/.shell/vars.sh"
   fi
 
-  local proxyProtocol="${1}"
-  local proxyHost="${2}"
-  local proxyPort="${3}"
-  local noProxy="${4}"
+  local proxyProtocol="${1:-${PROXY_PROTOCOL}}}"
+  local proxyHost="${2:-${PROXY_HOST}}}"
+  local proxyPort="${3:-${PROXY_PORT}}}"
+  local noProxy="${4:-${NOPROXY}}}"
+  
   local proxyAddr="$(proxy:compose-addr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
-
+  
   export http_proxy="${proxyAddr}"
   export HTTP_PROXY="${proxyAddr}"
   export https_proxy="${proxyAddr}"
@@ -75,6 +75,12 @@ proxy:set() {
   export no_proxy="${noProxy}"
   export NO_PROXY="${noProxy}"
   export MAVEN_OPTS="-Dhttp.proxyHost=${proxyHost} -Dhttp.proxyPort=${proxyPort} -Dhttps.proxyHost=${proxyHost} -Dhttps.proxyPort=${proxyPort}"
+
+  if [[ -z "${proxyProtocol}" || -z "${proxyHost}" || -z "${proxyPort}" ]]; then
+    echo "Syntax: proxy:set proxyProtocol proxyHost proxyPort [noProxy]"
+    echo "Or ensure PROXY_PROTOCOL, PROXY_HOST, and PROXY_PORT are set in ${HOME}/.shell/vars.sh"
+    return 1
+  fi
 }
 
 proxy:unset() {
