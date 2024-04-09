@@ -17,12 +17,13 @@ for file in vars aliases func; do
   [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
 
-# Set up proxy if in VPN or not
-[[ "${ALWAYS_PROXY_PROBE}" == "true" ]] && proxy:probe
-
-add-zsh-hook chpwd load-nvmrc
+add-zsh-hook chpwd nvmrc:load
 nvm:update
 nvmrc:load
+proxy:probe
+
+# Set up proxy if in VPN or not
+[[ "${ALWAYS_PROXY_PROBE}" == "true" ]]
 
 [[ -f "$HOME/.fig/export/dotfiles/dotfile.zsh" ]] && builtin source "$HOME/.fig/export/dotfiles/dotfile.zsh"
 
