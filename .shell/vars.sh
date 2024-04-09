@@ -25,6 +25,7 @@ export K3S_KUBECONFIG_MODE="644"
 export BUN_INSTALL="${HOME}/.bun"
 export NVM_DIR="${HOME}/.nvm"
 
+export EDITOR="nano"
 export PATH="${BUN_INSTALL}/bin:${PATH}"
 export PATH="/Library/Frameworks/Python.framework/Versions/3.12/bin:${PATH}"
 export PATH=~/.console-ninja/.bin:${PATH}

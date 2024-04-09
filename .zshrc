@@ -13,7 +13,7 @@ autoload -U add-zsh-hook
 [ -s "/Users/jonathan/.bun/_bun" ] && source "/Users/jonathan/.bun/_bun"
 
 # Load custom files
-for file in vars aliases func; do
+for file in vars func aliases; do
   [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
 
