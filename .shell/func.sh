@@ -1,18 +1,3 @@
-proxy:unset() {
-  unset http_proxy
-  unset HTTP_PROXY
-  unset https_proxy
-  unset HTTPS_PROXY
-  unset ftp_proxy
-  unset FTP_PROXY
-  unset all_proxy
-  unset ALL_PROXY
-  unset PIP_PROXY
-  unset no_proxy
-  unset NO_PROXY
-  unset MAVEN_OPTS
-}
-
 proxy:compose-addr() {
   if (( $# != 3 )) ; then
     return 1;
@@ -35,7 +20,7 @@ proxy:set() {
   local proxyHost="${2}"
   local proxyPort="${3}"
   local noProxy="${4}"
-  local proxyAddr="$(composeProxyAddr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
+  local proxyAddr="$(proxy:compose-addr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
 
   export http_proxy="${proxyAddr}"
   export HTTP_PROXY="${proxyAddr}"
@@ -51,24 +36,19 @@ proxy:set() {
   export MAVEN_OPTS="-Dhttp.proxyHost=${proxyHost} -Dhttp.proxyPort=${proxyPort} -Dhttps.proxyHost=${proxyHost} -Dhttps.proxyPort=${proxyPort}"
 }
 
-RESOLF='/etc/resolv.conf'
-dns:change() {
-  if (( $# < 1 )) ; then
-    return 1;
-  fi
-
-  local nameservers=("${(@s/,/)1}")
-
-  sudo truncate -s 0 "${RESOLF}"
-  for nameServerIP in ${nameservers[@]}; do
-    echo "nameserver ${nameServerIP}" | sudo tee -a "${RESOLF}" > /dev/null
-  done
-}
-
-wsl:change-dns() {
-  sudo chattr -i "${RESOLF}"
-  changeDNS "${1}"
-  sudo chattr +i "${RESOLF}"
+proxy:unset() {
+  unset http_proxy
+  unset HTTP_PROXY
+  unset https_proxy
+  unset HTTPS_PROXY
+  unset ftp_proxy
+  unset FTP_PROXY
+  unset all_proxy
+  unset ALL_PROXY
+  unset PIP_PROXY
+  unset no_proxy
+  unset NO_PROXY
+  unset MAVEN_OPTS
 }
 
 proxy:probe() {
@@ -100,10 +80,24 @@ proxy:aws() {
   fi
 }
 
-cluster:change() {
-  local clusterName="${1:-${AWS_CLUSTER_NAME}}"
-  export AWS_CLUSTER_NAME="${clusterName}"
-  aws eks update-kubeconfig --name "${AWS_CLUSTER_NAME}" --region "${AWS_REGION}"
+RESOLF='/etc/resolv.conf'
+dns:change() {
+  if (( $# < 1 )) ; then
+    return 1;
+  fi
+
+  local nameservers=("${(@s/,/)1}")
+
+  sudo truncate -s 0 "${RESOLF}"
+  for nameServerIP in ${nameservers[@]}; do
+    echo "nameserver ${nameServerIP}" | sudo tee -a "${RESOLF}" > /dev/null
+  done
+}
+
+wsl:change-dns() {
+  sudo chattr -i "${RESOLF}"
+  changeDNS "${1}"
+  sudo chattr +i "${RESOLF}"
 }
 
 wsl:set-display() {
@@ -120,6 +114,12 @@ wsl:set-display() {
     return
   fi
   export DISPLAY=$("${ipconfig}" | grep -A 5 "vEthernet (WSL)" | "${grepip[@]}"):0.0
+}
+
+cluster:change() {
+  local clusterName="${1:-${AWS_CLUSTER_NAME}}"
+  export AWS_CLUSTER_NAME="${clusterName}"
+  aws eks update-kubeconfig --name "${AWS_CLUSTER_NAME}" --region "${AWS_REGION}"
 }
 
 #SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
