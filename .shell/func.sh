@@ -12,7 +12,7 @@ proxy:compose-addr() {
 
 proxy:set() {
   if (( $# < 3 )) ; then
-    echo "Syntax: proxySet proxyProtocol proxyHost proxyPort [noProxy]"
+    echo "Syntax: proxy:set proxyProtocol proxyHost proxyPort [noProxy]"
     return 1
   fi
 
@@ -56,27 +56,27 @@ proxy:probe() {
   local withDNS="${1}"
   if nc -z -w 3 "${PROXY_HOST}" "${PROXY_PORT}" &> /dev/null; then
     echo "Detected VPN, turning on proxy."
-    proxySet "${PROXY_PROTOCOL}" "${PROXY_HOST}" "${PROXY_PORT}" "${NOPROXY}"
+    proxy:set "${PROXY_PROTOCOL}" "${PROXY_HOST}" "${PROXY_PORT}" "${NOPROXY}"
     if [[ "${(L)withDNS}" = "${matchDNS}" ]]; then
-      changeWSLDNS "${PROXY_DNS},${NO_PROXY_DNS}"
+      wsl:change-dns "${PROXY_DNS},${NO_PROXY_DNS}"
     fi
   else
     echo "Detected normal network, turning off proxy."
-    proxyUnset
+    proxy:unset
     if [[ "${(L)withDNS}" = "${matchDNS}" ]]; then
-      changeWSLDNS "${NO_PROXY_DNS},${PROXY_DNS}"
+      wsl:change-dns "${NO_PROXY_DNS},${PROXY_DNS}"
     fi
   fi
 }
 
 proxy:aws() {
   local proxyArgs=("${AWS_PROXY_PROTOCOL}" "${AWS_PROXY_HOST}" "${AWS_PROXY_PORT}")
-  local proxyAddr="$(composeProxyAddr ${proxyArgs[@]})"
+  local proxyAddr="$(proxy:compose-addr ${proxyArgs[@]})"
 
   if [[ "${http_proxy}" != "${proxyAddr}" ]]; then
-    proxySet ${proxyArgs[@]}
+    proxy:set ${proxyArgs[@]}
   else
-    proxyUnset
+    proxy:unset
   fi
 }
 
@@ -96,7 +96,7 @@ dns:change() {
 
 wsl:change-dns() {
   sudo chattr -i "${RESOLF}"
-  changeDNS "${1}"
+  dns:change "${1}"
   sudo chattr +i "${RESOLF}"
 }
 
