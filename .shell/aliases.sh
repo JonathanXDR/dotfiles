@@ -4,7 +4,7 @@ if cmdExists xclip; then
 
   #Paste from clipboard
   alias xp="xclip -selection clipboard -o"
-elif cmdExists termux-clipboard-get; then 
+elif cmdExists termux-clipboard-get; then
   alias xc="termux-clipboard-get"
   alias xp="termux-clipboard-set"
 fi
@@ -52,6 +52,8 @@ alias ea="${EDITOR} ${HOME}/.shell/aliases.sh"
 
 #Open editor in current directory
 alias e="${EDITOR} ."
+
+alias python='python3'
 
 ##################################Suffix alias######################################
 alias -s go="${EDITOR}"

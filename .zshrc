@@ -10,37 +10,7 @@ PATH="/Library/Frameworks/Python.framework/Versions/3.12/bin:${PATH}"
 export PATH
 
 eval "$(pyenv init --path)"
-alias python='python3'
 autoload -U add-zsh-hook
-
-nvm:update() {
-  local response
-
-  response=$(nvm install node --latest-npm 2>&1)
-
-  if [[ "$response" != *"already installed"* ]]; then
-    nvm use node
-  fi
-}
-
-load-nvmrc() {
-  local nvmrc_path
-  nvmrc_path="$(nvm_find_nvmrc)"
-
-  if [ -n "$nvmrc_path" ]; then
-    local nvmrc_node_version
-    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
-
-    if [ "$nvmrc_node_version" = "N/A" ]; then
-      nvm install
-    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
-      nvm use
-    fi
-  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
-    echo "Reverting to nvm default version"
-    nvm use default
-  fi
-}
 
 add-zsh-hook chpwd load-nvmrc
 nvm:update
@@ -56,7 +26,7 @@ done
 
 # Custom function Configs
 # Set up proxy if in VPN or not
-[[ "${ALWAYS_PROXY_PROBE}" == "true" ]] && proxyProbe
+[[ "${ALWAYS_PROXY_PROBE}" == "true" ]] && proxy:probe
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
