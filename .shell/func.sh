@@ -204,6 +204,14 @@ npm:update() {
   npm install
 }
 
+bun:update() {
+  npm i -g npm-check-updates
+  ncu -u
+  rm -rf node_modules
+  rm -f bun.lockb
+  bun install
+}
+
 git:date() {
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
     echo "This directory is not a Git repository."
