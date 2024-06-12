@@ -14,7 +14,10 @@ tap "mongodb/brew"
 tap "ubuntu/microk8s"
 brew "act"
 brew "openssl@3"
+brew "automake"
 brew "bash"
+brew "bash-completion@2"
+brew "brew-gem"
 brew "ghc"
 brew "cabal-install"
 brew "python@3.12"
@@ -26,8 +29,10 @@ brew "colima"
 brew "curl"
 brew "php"
 brew "composer"
+brew "coreutils"
 brew "cowsay"
 brew "dockutil"
+brew "dos2unix"
 brew "emacs"
 brew "node"
 brew "eslint"
@@ -39,11 +44,17 @@ brew "github-keygen"
 brew "gnupg"
 brew "go"
 brew "openjdk"
+brew "google-java-format"
 brew "gradle"
 brew "grep"
+brew "groovy"
+brew "gulp-cli"
 brew "helm"
 brew "jq"
 brew "k9s"
+brew "kubernetes-cli"
+brew "libffi"
+brew "libyaml"
 brew "lolcat"
 brew "mackup"
 brew "mariadb"
@@ -52,21 +63,26 @@ brew "maven"
 brew "minikube"
 brew "nvm"
 brew "opa"
+brew "openjdk@11"
 brew "pandoc"
+brew "pillow"
 brew "pinentry-mac"
 brew "poetry"
 brew "postgresql@14"
 brew "prettier"
 brew "putty"
 brew "pyenv"
+brew "rbenv"
 brew "react-native-cli"
 brew "redis"
+brew "ruby"
 brew "rust"
 brew "scala"
 brew "snyk-cli"
 brew "speedtest-cli"
 brew "stow"
 brew "swagger-codegen"
+brew "tailscale"
 brew "tectonic"
 brew "telnet"
 brew "vercel-cli"
@@ -75,6 +91,7 @@ brew "watchman"
 brew "wget"
 brew "xdelta"
 brew "yt-dlp"
+brew "zlib"
 brew "zsh"
 brew "coursier/formulas/coursier"
 brew "elastic/tap/elasticsearch-full"
@@ -87,6 +104,8 @@ cask "android-studio", args: { appdir: "/Applications" }
 cask "arc", args: { appdir: "/Applications" }
 cask "autodesk-fusion", args: { appdir: "/Applications" }
 cask "bartender", args: { appdir: "/Applications" }
+cask "basictex"
+cask "bettertouchtool"
 cask "blender", args: { appdir: "/Applications" }
 cask "burp-suite"
 cask "citrix-workspace", args: { appdir: "/Applications" }
@@ -102,18 +121,17 @@ cask "focusrite-control-2", args: { appdir: "/Applications" }
 cask "github", args: { appdir: "/Applications" }
 cask "gitkraken", args: { appdir: "/Applications" }
 cask "google-chrome", args: { appdir: "/Applications" }
+cask "gulp"
 cask "httpie", args: { appdir: "/Applications" }
 cask "insomnia"
 cask "intellij-idea", args: { appdir: "/Applications" }
 cask "intune-company-portal", args: { appdir: "/Applications" }
 cask "ipatool"
 cask "jetbrains-toolbox", args: { appdir: "/Applications" }
-cask "keyboardcleantool", args: { appdir: "/Applications" }
 cask "logi-options-plus", args: { appdir: "/Applications" }
 cask "microsoft-auto-update"
 cask "microsoft-teams", args: { appdir: "/Applications" }
 cask "minecraft", args: { appdir: "/Applications" }
-cask "miro", args: { appdir: "/Applications" }
 cask "mongodb-compass", args: { appdir: "/Applications" }
 cask "ngrok"
 cask "nordvpn", args: { appdir: "/Applications" }
@@ -156,7 +174,6 @@ mas "iMovie", id: 408981434
 mas "JapanRural", id: 1634749545
 mas "Keynote", id: 409183694
 mas "Logic Pro", id: 634148309
-mas "Magnet", id: 441258766
 mas "MainStage", id: 634159523
 mas "Microsoft Excel", id: 462058435
 mas "Microsoft OneNote", id: 784801555
@@ -246,7 +263,6 @@ vscode "iceworks-team.iceworks-doctor"
 vscode "inferrinizzard.prettier-sql-vscode"
 vscode "ipedrazas.kubernetes-snippets"
 vscode "irongeek.vscode-env"
-vscode "jackardios.vscode-css-to-tailwindcss"
 vscode "jakeboone02.cypher-query-language"
 vscode "janisdd.vscode-edit-csv"
 vscode "jannisx11.batch-rename-extension"
@@ -320,6 +336,7 @@ vscode "mwpb.java-prettier-formatter"
 vscode "mycelo.oracle-plsql"
 vscode "njpwerner.autodocstring"
 vscode "numso.prettier-standard-vscode"
+vscode "nuxtr.nuxtr-vscode"
 vscode "oderwat.indent-rainbow"
 vscode "oracle.oracledevtools"
 vscode "oven.bun-vscode"
@@ -350,6 +367,8 @@ vscode "rpinski.shebang-snippets"
 vscode "rvest.vs-code-prettier-eslint"
 vscode "sansbrina.garbage-oracle"
 vscode "sapse.vscode-cds"
+vscode "scala-lang.scala"
+vscode "scalameta.metals"
 vscode "sdras.vue-vscode-snippets"
 vscode "sgryjp.vscode-stable-sort"
 vscode "shakram02.bash-beautify"
