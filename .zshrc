@@ -25,6 +25,9 @@ proxy:probe
 # Set up proxy if in VPN or not
 [[ "${ALWAYS_PROXY_PROBE}" == "true" ]]
 
+# Load Angular CLI autocompletion.
+source <(ng completion script)
+
 [[ -f "$HOME/.fig/export/dotfiles/dotfile.zsh" ]] && builtin source "$HOME/.fig/export/dotfiles/dotfile.zsh"
 
 # Q post block. Keep at the bottom of this file.

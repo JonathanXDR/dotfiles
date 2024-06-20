@@ -10,6 +10,7 @@
 [tag]
 	forceSignAnnotated = true
 [init]
+	defaultBranch = main
 [core]
 	excludesfile = ~/.gitignore_global
 [filter "lfs"]
