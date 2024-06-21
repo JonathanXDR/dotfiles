@@ -31,6 +31,7 @@ brew "php"
 brew "composer"
 brew "coreutils"
 brew "cowsay"
+brew "displayplacer"
 brew "dockutil"
 brew "dos2unix"
 brew "emacs"
@@ -50,6 +51,9 @@ brew "grep"
 brew "groovy"
 brew "gulp-cli"
 brew "helm"
+brew "ifstat"
+brew "iftop"
+brew "ipfs"
 brew "jq"
 brew "k9s"
 brew "kubernetes-cli"
@@ -61,6 +65,7 @@ brew "mariadb"
 brew "mas"
 brew "maven"
 brew "minikube"
+brew "mtr"
 brew "nvm"
 brew "opa"
 brew "openjdk@11"
@@ -83,6 +88,7 @@ brew "speedtest-cli"
 brew "stow"
 brew "swagger-codegen"
 brew "tailscale"
+brew "tcpflow"
 brew "tectonic"
 brew "telnet"
 brew "vercel-cli"
@@ -151,6 +157,7 @@ cask "unity-hub", args: { appdir: "/Applications" }
 cask "visual-studio-code", args: { appdir: "/Applications" }
 cask "vivid", args: { appdir: "/Applications" }
 cask "vmware-fusion"
+cask "warp"
 cask "zulu"
 mas "AdBlock Pro", id: 1018301773
 mas "Affinity Designer 2", id: 1616831348
@@ -162,6 +169,7 @@ mas "Apple Configurator", id: 1037126344
 mas "Asphalt 9", id: 1491129197
 mas "com.jbapps.MangoMacos", id: 1549961729
 mas "Compressor", id: 424390742
+mas "DaisyDisk", id: 411643860
 mas "Developer", id: 640199958
 mas "Elmedia Video Player", id: 1044549675
 mas "Final Cut Pro", id: 424389933
@@ -201,6 +209,7 @@ vscode "akamud.vscode-theme-onedark"
 vscode "alefragnani.bookmarks"
 vscode "alefragnani.project-manager"
 vscode "alexcvzz.vscode-sqlite"
+vscode "aliariff.vscode-erb-beautify"
 vscode "amazonwebservices.amazon-q-vscode"
 vscode "amazonwebservices.aws-toolkit-vscode"
 vscode "amazonwebservices.codewhisperer-for-command-line-companion"
@@ -374,6 +383,7 @@ vscode "sgryjp.vscode-stable-sort"
 vscode "shakram02.bash-beautify"
 vscode "shd101wyy.markdown-preview-enhanced"
 vscode "shinotatwu-ds.file-tree-generator"
+vscode "shopify.ruby-lsp"
 vscode "sibiraj-s.vscode-scss-formatter"
 vscode "simonsiefke.svg-preview"
 vscode "sketchbuch.vsc-quokka-statusbar"
