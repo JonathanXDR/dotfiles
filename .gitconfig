@@ -22,4 +22,4 @@
 	rebase = true
 [gpg "ssh"]
 	program = ssh-keygen
-	allowedSignersFile = ""
+	allowedSignersFile = 
