@@ -106,7 +106,6 @@ brew "zsh"
 brew "coursier/formulas/coursier"
 brew "elastic/tap/elasticsearch-full"
 brew "mongodb/brew/mongodb-community"
-cask "adobe-acrobat-reader", args: { appdir: "/Applications" }
 cask "aldente", args: { appdir: "/Applications" }
 cask "amazon-q"
 cask "android-platform-tools"
@@ -119,6 +118,7 @@ cask "basictex"
 cask "bettertouchtool"
 cask "blender", args: { appdir: "/Applications" }
 cask "burp-suite"
+cask "chatgpt"
 cask "citrix-workspace", args: { appdir: "/Applications" }
 cask "desmume", args: { appdir: "/Applications" }
 cask "discord", args: { appdir: "/Applications" }
@@ -163,6 +163,7 @@ cask "unity-hub", args: { appdir: "/Applications" }
 cask "visual-studio-code", args: { appdir: "/Applications" }
 cask "vivid", args: { appdir: "/Applications" }
 cask "vmware-fusion"
+cask "wakatime"
 cask "warp"
 cask "zulu"
 mas "AdBlock Pro", id: 1018301773
@@ -208,7 +209,6 @@ mas "TestFlight", id: 899247664
 mas "The Lost City", id: 1538650027
 mas "The Unarchiver", id: 425424353
 mas "UTM", id: 1538878817
-mas "Xcode", id: 497799835
 mas "‎WhatsApp", id: 310633997
 vscode "aaron-bond.better-comments"
 vscode "akamud.vscode-theme-onedark"
