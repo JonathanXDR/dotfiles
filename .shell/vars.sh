@@ -1,3 +1,5 @@
+#!/bin/bash
+
 export PROXY_PROTOCOL="http"
 export PROXY_HOST="aproxy.corproot.net"
 export PROXY_PORT="8080"
