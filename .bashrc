@@ -24,11 +24,11 @@ add-zsh-hook chpwd nvmrc:load
 nvm:update
 nvmrc:load
 
-# Set up proxy if in VPN or not
-[[ "${ALWAYS_PROXY_PROBE}" == "true" ]]
-
 # Load Angular CLI autocompletion.
 source <(ng completion script)
+
+# Set up proxy if in VPN or not
+[[ "${ALWAYS_PROXY_PROBE}" == "true" ]]
 
 [[ -f "$HOME/.fig/export/dotfiles/dotfile.bash" ]] && source "$HOME/.fig/export/dotfiles/dotfile.bash"
 
