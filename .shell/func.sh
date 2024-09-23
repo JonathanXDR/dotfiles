@@ -196,20 +196,49 @@ nvmrc:load() {
   fi
 }
 
-npm:update() {
-  npm i -g npm-check-updates
+link:dotfiles() {
+  local source_dir="$HOME/Developer/Git/GitHub/dotfiles/"
+  local target_dir="$HOME"
+
+  local skip_files=(".DS_Store" ".git" ".gitignore" "LICENSE" "README.md")
+
+  should_skip() {
+    local filename="$1"
+    for skip_file in "${skip_files[@]}"; do
+      if [[ "$filename" == "$skip_file" ]]; then
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  for file in "$source_dir".*; do
+    local filename=$(basename "$file")
+
+
+    if should_skip "$filename"; then
+      echo "Skipping $filename"
+      continue
+    fi
+
+    local target="$target_dir/$filename"
+    
+    if [[ -e "$target" ]]; then
+      echo "File or directory $target already exists, skipping..."
+    else
+      ln -s "$file" "$target"
+      echo "Created symlink for $filename"
+    fi
+  done
+}
+
+ncu:update() {
+  # npm i -g npm-check-updates
+  # npm i -g @antfu/ni
   ncu -u
   rm -rf node_modules
   rm -f package-lock.json
-  npm install
-}
-
-bun:update() {
-  npm i -g npm-check-updates
-  ncu -u
-  rm -rf node_modules
-  rm -f bun.lockb
-  bun install
+  ni
 }
 
 git:date() {
