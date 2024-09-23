@@ -2,17 +2,17 @@
 
 cmd:exists() {
   [[ -z "$1" ]] && echo "No argument supplied" && exit 1
-  command -v "$1" &> /dev/null
+  command -v "$1" &>/dev/null
 }
 
 dns:change() {
-  if (( $# < 2 )) ; then
+  if (($# < 2)); then
     echo "Usage: dns:change <network service name> <DNS IPs separated by commas>"
-    return 1;
+    return 1
   fi
 
   local networkServiceName="$1"
-  IFS=',' read -r -a nameservers <<< "$2"
+  IFS=',' read -r -a nameservers <<<"$2"
 
   sudo networksetup -setdnsservers "${networkServiceName}" "Empty"
 
@@ -22,8 +22,8 @@ dns:change() {
 }
 
 proxy:compose-addr() {
-  if (( $# != 3 )) ; then
-    return 1;
+  if (($# != 3)); then
+    return 1
   fi
 
   local proxyProtocol="${1}"
@@ -42,10 +42,10 @@ proxy:set() {
   local proxyHost="${2:-${PROXY_HOST}}"
   local proxyPort="${3:-${PROXY_PORT}}"
   local noProxy="${4:-${NOPROXY}}"
-  
+
   local proxyAddr
   proxyAddr="$(proxy:compose-addr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
-  
+
   export http_proxy="${proxyAddr}"
   export HTTP_PROXY="${proxyAddr}"
   export https_proxy="${proxyAddr}"
@@ -84,7 +84,7 @@ proxy:unset() {
 proxy:probe() {
   local matchDNS="dns"
   local withDNS="${1}"
-  if nc -z -w 3 "${PROXY_HOST}" "${PROXY_PORT}" &> /dev/null; then
+  if nc -z -w 3 "${PROXY_HOST}" "${PROXY_PORT}" &>/dev/null; then
     echo "Detected VPN, turning on proxy."
     proxy:set "${PROXY_PROTOCOL}" "${PROXY_HOST}" "${PROXY_PORT}" "${NOPROXY}"
     if [[ "$(echo "${withDNS}" | tr '[:upper:]' '[:lower:]')" = "${matchDNS}" ]]; then
@@ -112,20 +112,20 @@ proxy:aws() {
 }
 
 #SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
-ssh:reagent () {
+ssh:reagent() {
   for agent in /tmp/ssh-*/agent.*; do
     export SSH_AUTH_SOCK=${agent}
-      if ssh-add -l > /dev/null 2>&1; then
-        echo Found working SSH Agent:
-        ssh-add -l
-        return
-      fi
+    if ssh-add -l >/dev/null 2>&1; then
+      echo Found working SSH Agent:
+      ssh-add -l
+      return
+    fi
   done
   echo Cannot find ssh agent - maybe you should reconnect and forward it?
 }
 
 ssh:agent() {
-  pgrep -x ssh-agent &> /dev/null && sshReagent &> /dev/null || eval "$(ssh-agent)" &> /dev/null
+  pgrep -x ssh-agent &>/dev/null && sshReagent &>/dev/null || eval "$(ssh-agent)" &>/dev/null
 }
 
 cluster:change() {
@@ -220,14 +220,13 @@ link:dotfiles() {
     local filename
     filename=$(basename "$file")
 
-
     if should_skip "$filename"; then
       echo "Skipping $filename"
       continue
     fi
 
     local target="$target_dir/$filename"
-    
+
     if [[ -e "$target" ]]; then
       echo "File or directory $target already exists, skipping..."
     else
