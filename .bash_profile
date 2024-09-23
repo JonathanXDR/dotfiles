@@ -10,7 +10,7 @@ eval "$(pyenv init --path)"
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
 
 # >>> coursier install directory >>>
-export PATH="$PATH:/Users/jonathan/Library/Application Support/Coursier/bin"
+export PATH="$PATH:/Users/$USER/Library/Application Support/Coursier/bin"
 # <<< coursier install directory <<<
 
 # Amazon Q post block. Keep at the bottom of this file.

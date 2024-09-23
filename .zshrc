@@ -10,7 +10,7 @@ eval "$(pyenv init --path)"
 autoload -U add-zsh-hook
 
 # bun completions
-[ -s "/Users/jonathan/.bun/_bun" ] && source "/Users/jonathan/.bun/_bun"
+[ -s "/Users/$USER/.bun/_bun" ] && source "/Users/$USER/.bun/_bun"
 
 # Load custom files
 for file in vars func aliases; do

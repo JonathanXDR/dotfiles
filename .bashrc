@@ -12,17 +12,17 @@ eval "$(pyenv init --path)"
 autoload -U add-zsh-hook
 
 # bun completions
-[ -s "/Users/jonathan/.bun/_bun" ] && source "/Users/jonathan/.bun/_bun"
+[ -s "/Users/$USER/.bun/_bun" ] && source "/Users/$USER/.bun/_bun"
 
 # Load custom files
 for file in vars func aliases; do
     [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
 
+proxy:probe
 add-zsh-hook chpwd nvmrc:load
 nvm:update
 nvmrc:load
-proxy:probe
 
 # Set up proxy if in VPN or not
 [[ "${ALWAYS_PROXY_PROBE}" == "true" ]]
