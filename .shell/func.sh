@@ -197,7 +197,7 @@ nvmrc:load() {
 }
 
 link:dotfiles() {
-  local source_dir="$HOME/Developer/Git/GitHub/dotfiles/"
+  local source_dir="$HOME/Developer/Git/GitHub/Dotfiles/"
   local target_dir="$HOME"
 
   local skip_files=(".DS_Store" ".git" ".gitignore" "LICENSE" "README.md")
