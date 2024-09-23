@@ -1,0 +1,8 @@
+[submodule ".fig/plugins/git-flow"]
+	url = https://github.com/nvie/gitflow
+[submodule ".fig/plugins/git-flow-completion"]
+	url = https://github.com/bobthecow/git-flow-completion
+[submodule ".fig/plugins/zsh-completions"]
+	url = https://github.com/zsh-users/zsh-completions
+[submodule ".fig/plugins/zsh-syntax-highlighting"]
+	url = https://github.com/zsh-users/zsh-syntax-highlighting.git
