@@ -241,8 +241,60 @@ ncu:update() {
   # npm i -g @antfu/ni
   ncu -u
   rm -rf node_modules
-  rm -f package-lock.json
+  rm -f yarn.lock package-lock.json pnpm-lock.yaml bun.lockb
   ni
+}
+
+git:diff() {
+  local source_branch="$1"
+  local target_branch="$2"
+
+  git diff --name-only "$source_branch...$target_branch" | while read file; do
+    echo -e "\n$file:\n"
+    git show "$target_branch:$file"
+  done | pbcopy
+
+  echo "Diff output copied to clipboard."
+}
+
+git:author() {
+  set -euo pipefail
+
+  usage() {
+    echo "Usage: $0 <repo_path> <branch_name> <new_author_name> <new_author_email>" >&2
+    exit 1
+  }
+
+  error() {
+    echo "Error: $1" >&2
+    exit 1
+  }
+
+  [[ $# -eq 4 ]] || usage
+
+  repo_path="$1"
+  branch_name="$2"
+  new_author_name="$3"
+  new_author_email="$4"
+
+  [[ -d "$repo_path/.git" ]] || error "'$repo_path' is not a Git repository."
+
+  cd "$repo_path" || error "Unable to change to directory '$repo_path'."
+
+  git rev-parse --verify "$branch_name" >/dev/null 2>&1 || error "Branch '$branch_name' does not exist."
+
+  git filter-branch -f --env-filter "
+    GIT_AUTHOR_NAME='$new_author_name'
+    GIT_AUTHOR_EMAIL='$new_author_email'
+    GIT_COMMITTER_NAME='$new_author_name'
+    GIT_COMMITTER_EMAIL='$new_author_email'
+    export GIT_AUTHOR_NAME
+    export GIT_AUTHOR_EMAIL
+    export GIT_COMMITTER_NAME
+    export GIT_COMMITTER_EMAIL
+" "$branch_name" || error "Failed to rewrite Git history."
+
+  echo "Git history has been rewritten successfully."
 }
 
 git:date() {
