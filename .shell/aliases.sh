@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if cmd:exists xclip; then
   alias xc="xclip -selection c"
