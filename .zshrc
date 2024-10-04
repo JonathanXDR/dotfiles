@@ -19,6 +19,7 @@ done
 
 proxy:probe
 add-zsh-hook chpwd nvmrc:load
+bun:update
 nvm:update
 nvmrc:load
 

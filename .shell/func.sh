@@ -1,153 +1,121 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cmd:exists() {
-  [[ -z "$1" ]] && echo "No argument supplied" && exit 1
+  [[ $# -eq 1 ]] || {
+    echo "Usage: cmd:exists <command>" >&2
+    return 1
+  }
   command -v "$1" &>/dev/null
 }
 
 dns:change() {
   if (($# < 2)); then
-    echo "Usage: dns:change <network service name> <DNS IPs separated by commas>"
+    echo "Usage: dns:change <network service name> <DNS IPs separated by commas>" >&2
     return 1
   fi
 
-  local networkServiceName="$1"
-  IFS=',' read -r -a nameservers <<<"$2"
+  local network_service="$1"
+  IFS=',' read -ra nameservers <<<"$2"
 
-  sudo networksetup -setdnsservers "${networkServiceName}" "Empty"
-
-  for nameServerIP in "${nameservers[@]}"; do
-    sudo networksetup -setdnsservers "${networkServiceName}" "${nameServerIP}"
-  done
+  sudo networksetup -setdnsservers "${network_service}" "Empty" "${nameservers[@]}"
 }
 
 proxy:compose-addr() {
-  if (($# != 3)); then
-    return 1
-  fi
-
-  local proxyProtocol="${1}"
-  local proxyHost="${2}"
-  local proxyPort="${3}"
-
-  echo "${proxyProtocol}://${proxyHost}:${proxyPort}"
+  [[ $# -eq 3 ]] || return 1
+  printf "%s://%s:%s" "$1" "$2" "$3"
 }
 
 proxy:set() {
-  if [[ -z "${PROXY_PROTOCOL}" || -z "${PROXY_HOST}" || -z "${PROXY_PORT}" ]]; then
-    source "${HOME}/.shell/vars.sh"
-  fi
+  local proxy_protocol="${1:-${PROXY_PROTOCOL}}"
+  local proxy_host="${2:-${PROXY_HOST}}"
+  local proxy_port="${3:-${PROXY_PORT}}"
+  local no_proxy="${4:-${NOPROXY}}"
 
-  local proxyProtocol="${1:-${PROXY_PROTOCOL}}"
-  local proxyHost="${2:-${PROXY_HOST}}"
-  local proxyPort="${3:-${PROXY_PORT}}"
-  local noProxy="${4:-${NOPROXY}}"
-
-  local proxyAddr
-  proxyAddr="$(proxy:compose-addr "${proxyProtocol}" "${proxyHost}" "${proxyPort}")"
-
-  export http_proxy="${proxyAddr}"
-  export HTTP_PROXY="${proxyAddr}"
-  export https_proxy="${proxyAddr}"
-  export HTTPS_PROXY="${proxyAddr}"
-  export ftp_proxy="${proxyAddr}"
-  export FTP_PROXY="${proxyAddr}"
-  export all_proxy="${proxyAddr}"
-  export ALL_PROXY="${proxyAddr}"
-  export PIP_PROXY="${proxyAddr}"
-  export no_proxy="${noProxy}"
-  export NO_PROXY="${noProxy}"
-  export MAVEN_OPTS="-Dhttp.proxyHost=${proxyHost} -Dhttp.proxyPort=${proxyPort} -Dhttps.proxyHost=${proxyHost} -Dhttps.proxyPort=${proxyPort}"
-
-  if [[ -z "${proxyProtocol}" || -z "${proxyHost}" || -z "${proxyPort}" ]]; then
-    echo "Syntax: proxy:set proxyProtocol proxyHost proxyPort [noProxy]"
-    echo "Or ensure PROXY_PROTOCOL, PROXY_HOST, and PROXY_PORT are set in ${HOME}/.shell/vars.sh"
+  if [[ -z "${proxy_protocol}" || -z "${proxy_host}" || -z "${proxy_port}" ]]; then
+    echo "Usage: proxy:set <protocol> <host> <port> [no_proxy]" >&2
+    echo "Or ensure PROXY_PROTOCOL, PROXY_HOST, and PROXY_PORT are set in ${HOME}/.shell/vars.sh" >&2
     return 1
   fi
+
+  local proxy_addr
+  proxy_addr="$(proxy:compose-addr "${proxy_protocol}" "${proxy_host}" "${proxy_port}")"
+
+  export http_proxy="${proxy_addr}"
+  export https_proxy="${proxy_addr}"
+  export ftp_proxy="${proxy_addr}"
+  export all_proxy="${proxy_addr}"
+  export HTTP_PROXY="${proxy_addr}"
+  export HTTPS_PROXY="${proxy_addr}"
+  export FTP_PROXY="${proxy_addr}"
+  export ALL_PROXY="${proxy_addr}"
+  export PIP_PROXY="${proxy_addr}"
+  export no_proxy="${no_proxy}"
+  export NO_PROXY="${no_proxy}"
+  export MAVEN_OPTS="-Dhttp.proxyHost=${proxy_host} -Dhttp.proxyPort=${proxy_port} -Dhttps.proxyHost=${proxy_host} -Dhttps.proxyPort=${proxy_port}"
 }
 
 proxy:unset() {
-  unset http_proxy
-  unset HTTP_PROXY
-  unset https_proxy
-  unset HTTPS_PROXY
-  unset ftp_proxy
-  unset FTP_PROXY
-  unset all_proxy
-  unset ALL_PROXY
-  unset PIP_PROXY
-  unset no_proxy
-  unset NO_PROXY
-  unset MAVEN_OPTS
+  unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY PIP_PROXY no_proxy NO_PROXY MAVEN_OPTS
 }
 
 proxy:probe() {
-  local matchDNS="dns"
-  local withDNS="${1}"
+  local with_dns="${1:-}"
   if nc -z -w 3 "${PROXY_HOST}" "${PROXY_PORT}" &>/dev/null; then
     echo "Detected VPN, turning on proxy."
     proxy:set "${PROXY_PROTOCOL}" "${PROXY_HOST}" "${PROXY_PORT}" "${NOPROXY}"
-    if [[ "$(echo "${withDNS}" | tr '[:upper:]' '[:lower:]')" = "${matchDNS}" ]]; then
-      wsl:change-dns "${PROXY_DNS},${NO_PROXY_DNS}"
-    fi
+    [[ "${with_dns}" == "dns" ]] && wsl_change_dns "${PROXY_DNS:-},${NO_PROXY_DNS:-}"
   else
-    echo "Detected normal network, turning off proxy."
+    # echo "Detected normal network, turning off proxy."
     proxy:unset
-    if [[ "$(echo "${withDNS}" | tr '[:upper:]' '[:lower:]')" = "${matchDNS}" ]]; then
-      wsl:change-dns "${NO_PROXY_DNS},${PROXY_DNS}"
-    fi
+    [[ "${with_dns}" == "dns" ]] && wsl_change_dns "${NO_PROXY_DNS:-},${PROXY_DNS:-}"
   fi
 }
 
 proxy:aws() {
-  local proxyArgs=("${AWS_PROXY_PROTOCOL}" "${AWS_PROXY_HOST}" "${AWS_PROXY_PORT}")
-  local proxyAddr
-  proxyAddr="$(proxy:compose-addr "${proxyArgs[@]}")"
+  local proxy_args=("${AWS_PROXY_PROTOCOL:-http}" "${AWS_PROXY_HOST:-localhost}" "${AWS_PROXY_PORT:-8080}")
+  local proxy_addr
+  proxy_addr="$(proxy:compose-addr "${proxy_args[@]}")"
 
-  if [[ "${http_proxy}" != "${proxyAddr}" ]]; then
-    proxy:set "${proxyArgs[@]}"
+  if [[ "${http_proxy:-}" != "${proxy_addr}" ]]; then
+    proxy:set "${proxy_args[@]}"
   else
     proxy:unset
   fi
 }
 
-#SSH Reagent (http://tychoish.com/post/9-awesome-ssh-tricks/)
 ssh:reagent() {
   for agent in /tmp/ssh-*/agent.*; do
-    export SSH_AUTH_SOCK=${agent}
-    if ssh-add -l >/dev/null 2>&1; then
-      echo Found working SSH Agent:
+    export SSH_AUTH_SOCK="${agent}"
+    if ssh-add -l &>/dev/null; then
+      echo "Found working SSH Agent:"
       ssh-add -l
-      return
+      return 0
     fi
   done
-  echo Cannot find ssh agent - maybe you should reconnect and forward it?
+  echo "Cannot find ssh agent - maybe you should reconnect and forward it?"
+  return 1
 }
 
 ssh:agent() {
-  pgrep -x ssh-agent &>/dev/null && sshReagent &>/dev/null || eval "$(ssh-agent)" &>/dev/null
+  pgrep -x ssh-agent &>/dev/null && ssh:reagent &>/dev/null || eval "$(ssh-agent)" &>/dev/null
 }
 
 cluster:change() {
-  local clusterName="${1:-${AWS_CLUSTER_NAME}}"
-  export AWS_CLUSTER_NAME="${clusterName}"
+  local cluster_name="${1:-${AWS_CLUSTER_NAME}}"
+  export AWS_CLUSTER_NAME="${cluster_name}"
   aws eks update-kubeconfig --name "${AWS_CLUSTER_NAME}" --region "${AWS_REGION}"
 }
 
 docker:cleanup() {
-  keywords="$*"
-
-  if [[ -z "${keywords}" ]]; then
-    docker stop "$(docker ps -a -q)"
-    docker rm "$(docker ps -a -q)"
-    docker rmi "$(docker images -q)"
+  if [[ $# -eq 0 ]]; then
+    docker stop "$(docker ps -aq)" 2>/dev/null || true
+    docker rm "$(docker ps -aq)" 2>/dev/null || true
+    docker rmi "$(docker images -q)" 2>/dev/null || true
   else
-    containers_to_stop=$(docker ps -a --format '{{.ID}} {{.Names}}' | grep -v -E "(${keywords})" | awk '{print $1}')
-    docker stop "${containers_to_stop}"
-    docker rm "${containers_to_stop}"
-
-    images_to_remove=$(docker images --format '{{.ID}} {{.Repository}}' | grep -v -E "(${keywords})" | awk '{print $1}')
-    docker rmi "${images_to_remove}"
+    local keywords="$*"
+    docker stop "$(docker ps -a --format '{{.ID}} {{.Names}}' | grep -vE "(${keywords})" | awk '{print $1}')" 2>/dev/null || true
+    docker rm "$(docker ps -a --format '{{.ID}} {{.Names}}' | grep -vE "(${keywords})" | awk '{print $1}')" 2>/dev/null || true
+    docker rmi "$(docker images --format '{{.ID}} {{.Repository}}' | grep -vE "(${keywords})" | awk '{print $1}')" 2>/dev/null || true
   fi
 }
 
@@ -156,7 +124,7 @@ dock:reset() {
   killall Dock
   sleep 5
 
-  apps=("Arc" "Notion" "Visual Studio Code" "Microsoft Teams" "Discord" "GitKraken")
+  local apps=("Arc" "Notion" "Visual Studio Code" "Microsoft Teams" "Discord" "GitKraken")
 
   for app in "${apps[@]}"; do
     defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/${app}.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>"
@@ -172,13 +140,13 @@ dock:reset() {
 }
 
 nvm:update() {
-  local response
-
-  response=$(nvm install node --latest-npm 2>&1)
-
-  if [[ "${response}" != *"already installed"* ]]; then
+  if ! nvm install node --latest-npm 2>&1 | tee /dev/null | grep -q "already installed"; then
     nvm use node
   fi
+}
+
+bun:update() {
+  bun upgrade &>/dev/null
 }
 
 nvmrc:load() {
@@ -189,7 +157,7 @@ nvmrc:load() {
     local nvmrc_node_version
     nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
 
-    if [[ "${nvmrc_node_version}" = "N/A" ]]; then
+    if [[ "${nvmrc_node_version}" == "N/A" ]]; then
       nvm install
     elif [[ "${nvmrc_node_version}" != "$(nvm version)" ]]; then
       nvm use
@@ -203,27 +171,16 @@ nvmrc:load() {
 link:dotfiles() {
   local source_dir="$HOME/Developer/Git/GitHub/Dotfiles/"
   local target_dir="$HOME"
-
-  local skip_files=(".DS_Store" ".git" ".gitignore" "LICENSE" "README.md")
-
-  should_skip() {
-    local filename="$1"
-    for skip_file in "${skip_files[@]}"; do
-      if [[ "$filename" == "$skip_file" ]]; then
-        return 0
-      fi
-    done
-    return 1
-  }
+  local -a skip_files=(".DS_Store" ".git" ".gitignore" "LICENSE" "README.md")
 
   for file in "$source_dir".*; do
     local filename
     filename=$(basename "$file")
 
-    if should_skip "$filename"; then
+    [[ " ${skip_files[*]} " =~ ${filename} ]] && {
       echo "Skipping $filename"
       continue
-    fi
+    }
 
     local target="$target_dir/$filename"
 
@@ -249,7 +206,7 @@ git:diff() {
   local source_branch="$1"
   local target_branch="$2"
 
-  git diff --name-only "$source_branch...$target_branch" | while read file; do
+  git diff --name-only "$source_branch...$target_branch" | while read -r file; do
     echo -e "\n$file:\n"
     git show "$target_branch:$file"
   done | pbcopy
@@ -258,80 +215,41 @@ git:diff() {
 }
 
 git:author() {
-  set -euo pipefail
-
-  usage() {
-    echo "Usage: $0 <repo_path> <branch_name> <new_author_name> <new_author_email>" >&2
-    exit 1
+  [[ $# -eq 4 ]] || {
+    echo "Usage: git:author <repo_path> <branch_name> <new_author_name> <new_author_email>" >&2
+    return 1
   }
 
-  error() {
-    echo "Error: $1" >&2
-    exit 1
+  local repo_path="$1" branch_name="$2" new_author_name="$3" new_author_email="$4"
+
+  [[ -d "$repo_path/.git" ]] || {
+    echo "Error: '$repo_path' is not a Git repository." >&2
+    return 1
   }
 
-  [[ $# -eq 4 ]] || usage
+  cd "$repo_path" || {
+    echo "Error: Unable to change to directory '$repo_path'." >&2
+    return 1
+  }
 
-  repo_path="$1"
-  branch_name="$2"
-  new_author_name="$3"
-  new_author_email="$4"
-
-  [[ -d "$repo_path/.git" ]] || error "'$repo_path' is not a Git repository."
-
-  cd "$repo_path" || error "Unable to change to directory '$repo_path'."
-
-  git rev-parse --verify "$branch_name" >/dev/null 2>&1 || error "Branch '$branch_name' does not exist."
+  git rev-parse --verify "$branch_name" >/dev/null 2>&1 || {
+    echo "Error: Branch '$branch_name' does not exist." >&2
+    return 1
+  }
 
   git filter-branch -f --env-filter "
-    GIT_AUTHOR_NAME='$new_author_name'
-    GIT_AUTHOR_EMAIL='$new_author_email'
-    GIT_COMMITTER_NAME='$new_author_name'
-    GIT_COMMITTER_EMAIL='$new_author_email'
-    export GIT_AUTHOR_NAME
-    export GIT_AUTHOR_EMAIL
-    export GIT_COMMITTER_NAME
-    export GIT_COMMITTER_EMAIL
-" "$branch_name" || error "Failed to rewrite Git history."
+        GIT_AUTHOR_NAME='$new_author_name'
+        GIT_AUTHOR_EMAIL='$new_author_email'
+        GIT_COMMITTER_NAME='$new_author_name'
+        GIT_COMMITTER_EMAIL='$new_author_email'
+        export GIT_AUTHOR_NAME
+        export GIT_AUTHOR_EMAIL
+        export GIT_COMMITTER_NAME
+        export GIT_COMMITTER_EMAIL
+    " "$branch_name" || {
+    echo "Error: Failed to rewrite Git history." >&2
+    return 1
+  }
 
   echo "Git history has been rewritten successfully."
-}
-
-git:date() {
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo "This directory is not a Git repository."
-    return 1
-  fi
-
-  echo "Enter the commit hash (e.g., abcd1234) or press Enter to use the latest commit:"
-  read COMMIT_HASH
-
-  if [[ -z "${COMMIT_HASH}" ]]; then
-    COMMIT_HASH=$(git rev-parse HEAD)
-  fi
-
-  AUTHOR_DATE=$(date +"%Y-%m-%d %H:%M:%S")
-  echo "Enter the AUTHOR_DATE (in 'YYYY-MM-DD HH:MM:SS' format) or press Enter to use current date [${AUTHOR_DATE}]:"
-  vared -p '' -c AUTHOR_DATE
-
-  COMMITTER_DATE=$(date +"%Y-%m-%d %H:%M:%S")
-  echo "Enter the COMMITTER_DATE (in 'YYYY-MM-DD HH:MM:SS' format) or press Enter to use current date [${COMMITTER_DATE}]:"
-  vared -p '' -c COMMITTER_DATE
-
-  [[ -z "${AUTHOR_DATE}" ]] && AUTHOR_DATE=$(date +"%Y-%m-%d %H:%M:%S")
-  [[ -z "${COMMITTER_DATE}" ]] && COMMITTER_DATE=$(date +"%Y-%m-%d %H:%M:%S")
-
-  if [[ "${COMMIT_HASH}" == $(git rev-parse HEAD) ]]; then
-    GIT_AUTHOR_DATE="${AUTHOR_DATE}" GIT_COMMITTER_DATE="${COMMITTER_DATE}" git commit --amend --no-edit --date "${AUTHOR_DATE}"
-  else
-    FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --env-filter "
-      if test \$GIT_COMMIT = '${COMMIT_HASH}'
-      then
-        export GIT_AUTHOR_DATE='${AUTHOR_DATE}'
-        export GIT_COMMITTER_DATE='${COMMITTER_DATE}'
-      fi
-        " "${COMMIT_HASH}"^..HEAD </dev/null
-  fi
-
-  echo "Date changed successfully!"
 }
