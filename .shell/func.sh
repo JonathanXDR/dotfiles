@@ -214,42 +214,234 @@ git:diff() {
   echo "Diff output copied to clipboard."
 }
 
-git:author() {
-  [[ $# -eq 4 ]] || {
-    echo "Usage: git:author <repo_path> <branch_name> <new_author_name> <new_author_email>" >&2
+git:history() {
+  local editor="nano"
+  local editor_args=()
+
+  # Parse optional parameters
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --editor)
+      shift
+      if [[ $# -eq 0 ]]; then
+        echo "Error: --editor requires an argument." >&2
+        return 1
+      fi
+      editor="$1"
+      shift
+      ;;
+    --)
+      shift
+      editor_args=("$@")
+      break
+      ;;
+    *)
+      echo "Usage: git:history [--editor <editor>] [-- <editor_args>]" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  # Ensure we are in a git repository
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "Error: Not a git repository." >&2
     return 1
+  fi
+
+  # Create a temporary file for editing
+  local tmpfile
+  tmpfile=$(mktemp -t git-history-XXXXXX)
+
+  # Generate the git log into the temporary file with raw dates
+  git log --reverse --pretty=format:'commit %H%nAuthor: %an <%ae>%nDate:   %ad%nDateRaw: %cd%n%n    %B' >"$tmpfile"
+
+  # Check if the editor exists
+  if ! command -v "$editor" >/dev/null 2>&1; then
+    echo "Error: Editor '$editor' not found." >&2
+    rm -f "$tmpfile"
+    return 1
+  fi
+
+  # Add --wait flag for code (VSCode) and idea (IntelliJ IDEA)
+  if [[ "$editor" == "code" && ${#editor_args[@]} -eq 0 ]]; then
+    editor_args+=(--wait)
+  elif [[ "$editor" == "idea" && ${#editor_args[@]} -eq 0 ]]; then
+    editor_args+=(--wait)
+  fi
+
+  # Open the temporary file with the specified editor
+  "$editor" "${editor_args[@]}" "$tmpfile"
+  if [[ $? -ne 0 ]]; then
+    echo "Error: Editor exited with an error." >&2
+    rm -f "$tmpfile"
+    return 1
+  fi
+
+  # Ask for user confirmation before proceeding
+  echo -n "Are you sure you want to rewrite the entire git history? (Yes/No): "
+  read -r confirmation
+  if [[ ! "$confirmation" =~ ^[Yy]es$ ]]; then
+    echo "Aborted by user."
+    rm -f "$tmpfile"
+    return 1
+  fi
+
+  # Initialize arrays for commit data
+  declare -a commits authors emails dates dates_raw messages
+
+  # Variables for parsing
+  local commit_hash=""
+  local author=""
+  local email=""
+  local date=""
+  local date_raw=""
+  local message=""
+  local in_message=0
+
+  # Read the modified log and parse new commit data
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ $line == commit\ * ]]; then
+      # Save the previous commit's data
+      if [[ -n $commit_hash ]]; then
+        commits+=("$commit_hash")
+        authors+=("$author")
+        emails+=("$email")
+        dates+=("$date")
+        dates_raw+=("$date_raw")
+        # Trim trailing newlines from message
+        message="${message%$'\n'}"
+        messages+=("$message")
+      fi
+      # Start parsing a new commit
+      commit_hash="${line#commit }"
+      author=""
+      email=""
+      date=""
+      date_raw=""
+      message=""
+      in_message=0
+    elif [[ $line == Author:\ * ]]; then
+      author_line="${line#Author: }"
+      author="${author_line%% <*}"
+      email="${author_line#*<}"
+      email="${email%>}"
+    elif [[ $line == Date:\ * ]]; then
+      date="${line#Date:   }"
+    elif [[ $line == DateRaw:\ * ]]; then
+      date_raw="${line#DateRaw: }"
+    elif [[ -z $line ]]; then
+      if [[ $in_message -eq 1 ]]; then
+        message+=$'\n'
+      fi
+    else
+      if [[ $in_message -eq 0 ]]; then
+        message+="    ${line#    }"
+        in_message=1
+      else
+        message+=$'\n'"    ${line#    }"
+      fi
+    fi
+  done <"$tmpfile"
+
+  # Save the last commit's data
+  if [[ -n $commit_hash ]]; then
+    commits+=("$commit_hash")
+    authors+=("$author")
+    emails+=("$email")
+    dates+=("$date")
+    dates_raw+=("$date_raw")
+    # Trim trailing newlines from message
+    message="${message%$'\n'}"
+    messages+=("$message")
+  fi
+
+  # Create temporary scripts and message files directory
+  local env_filter_script
+  local msg_filter_script
+  local msg_dir
+  env_filter_script=$(mktemp -t git-env-filter-XXXXXX.sh)
+  msg_filter_script=$(mktemp -t git-msg-filter-XXXXXX.sh)
+  msg_dir=$(mktemp -d -t git-messages-XXXXXX)
+
+  # Function to escape special characters for the env-filter script
+  escape_for_shell() {
+    local str="$1"
+    str="${str//\\/\\\\}"
+    str="${str//\'/\'\\\'\'}"
+    echo "$str"
   }
 
-  local repo_path="$1" branch_name="$2" new_author_name="$3" new_author_email="$4"
+  # Generate the env-filter script
+  {
+    echo '#!/bin/sh'
+    echo 'case "$GIT_COMMIT" in'
+    for ((idx = 0; idx < ${#commits[@]}; idx++)); do
+      hash="${commits[$idx]}"
+      author="${authors[$idx]}"
+      email="${emails[$idx]}"
+      date_raw="${dates_raw[$idx]}"
 
-  [[ -d "$repo_path/.git" ]] || {
-    echo "Error: '$repo_path' is not a Git repository." >&2
-    return 1
-  }
+      # Skip if hash is empty
+      if [[ -z "$hash" ]]; then
+        continue
+      fi
 
-  cd "$repo_path" || {
-    echo "Error: Unable to change to directory '$repo_path'." >&2
-    return 1
-  }
+      hash_escaped=$(escape_for_shell "$hash")
+      author_escaped=$(escape_for_shell "$author")
+      email_escaped=$(escape_for_shell "$email")
+      date_raw_escaped=$(escape_for_shell "$date_raw")
 
-  git rev-parse --verify "$branch_name" >/dev/null 2>&1 || {
-    echo "Error: Branch '$branch_name' does not exist." >&2
-    return 1
-  }
+      echo "$hash_escaped)"
+      echo "    export GIT_AUTHOR_NAME='${author_escaped}'"
+      echo "    export GIT_AUTHOR_EMAIL='${email_escaped}'"
+      echo "    export GIT_AUTHOR_DATE='${date_raw_escaped}'"
+      echo "    export GIT_COMMITTER_NAME='${author_escaped}'"
+      echo "    export GIT_COMMITTER_EMAIL='${email_escaped}'"
+      echo "    export GIT_COMMITTER_DATE='${date_raw_escaped}'"
+      echo "    ;;"
+    done
+    echo '*) ;;'
+    echo 'esac'
+  } >"$env_filter_script"
+  chmod +x "$env_filter_script"
 
-  git filter-branch -f --env-filter "
-        GIT_AUTHOR_NAME='$new_author_name'
-        GIT_AUTHOR_EMAIL='$new_author_email'
-        GIT_COMMITTER_NAME='$new_author_name'
-        GIT_COMMITTER_EMAIL='$new_author_email'
-        export GIT_AUTHOR_NAME
-        export GIT_AUTHOR_EMAIL
-        export GIT_COMMITTER_NAME
-        export GIT_COMMITTER_EMAIL
-    " "$branch_name" || {
+  # Write each commit message to a separate file
+  for ((idx = 0; idx < ${#commits[@]}; idx++)); do
+    hash="${commits[$idx]}"
+    msg="${messages[$idx]}"
+
+    if [[ -n "$hash" ]]; then
+      echo -n "$msg" >"$msg_dir/$hash"
+    fi
+  done
+
+  # Generate the msg-filter script
+  {
+    echo '#!/bin/sh'
+    echo "MSG_DIR='$msg_dir'"
+    echo 'if [ -f "$MSG_DIR/$GIT_COMMIT" ]; then'
+    echo '    cat "$MSG_DIR/$GIT_COMMIT"'
+    echo 'else'
+    echo '    cat'
+    echo 'fi'
+  } >"$msg_filter_script"
+  chmod +x "$msg_filter_script"
+
+  # Run git filter-branch with the generated scripts
+  FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
+    --env-filter "source $env_filter_script" \
+    --msg-filter "source $msg_filter_script" \
+    -- --all || {
     echo "Error: Failed to rewrite Git history." >&2
+    # Clean up temporary files
+    rm -rf "$tmpfile" "$env_filter_script" "$msg_filter_script" "$msg_dir"
     return 1
   }
+
+  # Clean up temporary files
+  rm -rf "$tmpfile" "$env_filter_script" "$msg_filter_script" "$msg_dir"
 
   echo "Git history has been rewritten successfully."
+  echo "Note: If you've already pushed this branch, you'll need to force push with:"
+  echo "git push --force-with-lease"
 }
