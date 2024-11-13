@@ -205,11 +205,19 @@ ncu:update() {
 git:diff() {
   local source_branch="$1"
   local target_branch="$2"
+  local exclude_pattern="$3"
 
-  git diff --name-only "$source_branch...$target_branch" | while read -r file; do
-    echo -e "\n$file:\n"
-    git show "$target_branch:$file"
-  done | pbcopy
+  if [[ -n "$exclude_pattern" ]]; then
+    git diff --name-only "$source_branch...$target_branch" -- ":!$exclude_pattern" | while read -r file; do
+      echo -e "\n$file:\n"
+      git show "$target_branch:$file"
+    done | pbcopy
+  else
+    git diff --name-only "$source_branch...$target_branch" | while read -r file; do
+      echo -e "\n$file:\n"
+      git show "$target_branch:$file"
+    done | pbcopy
+  fi
 
   echo "Diff output copied to clipboard."
 }
