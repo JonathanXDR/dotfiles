@@ -313,11 +313,16 @@ git:history() {
     case "$line" in
     commit\ *)
       if [ -n "$commit_hash" ]; then
-        commits_env="${commits_env}${commits_env:+}$commit_hash"
-        authors_env="${authors_env}${authors_env:+}$author"
-        emails_env="${emails_env}${emails_env:+}$email"
-        dates_env="${dates_env}${dates_env:+}$date"
-        messages_env="${messages_env}${messages_env:+}$message"
+        commits_env="${commits_env}${commits_env:+
+}$commit_hash"
+        authors_env="${authors_env}${authors_env:+
+}$author"
+        emails_env="${emails_env}${emails_env:+
+}$email"
+        dates_env="${dates_env}${dates_env:+
+}$date"
+        messages_env="${messages_env}${messages_env:+
+}$message"
       fi
       commit_hash=$(printf '%s' "$line" | sed 's/^commit //')
       author=""
@@ -352,7 +357,8 @@ git:history() {
           message="$message$trimmed"
           first_message_line=0
         else
-          message="$message $trimmed"
+          message="$message
+$trimmed"
         fi
       fi
       ;;
@@ -360,11 +366,16 @@ git:history() {
   done <"$tmpfile"
 
   if [ -n "$commit_hash" ]; then
-    commits_env="${commits_env}${commits_env:+}$commit_hash"
-    authors_env="${authors_env}${authors_env:+}$author"
-    emails_env="${emails_env}${emails_env:+}$email"
-    dates_env="${dates_env}${dates_env:+}$date"
-    messages_env="${messages_env}${messages_env:+}$message"
+    commits_env="${commits_env}${commits_env:+
+}$commit_hash"
+    authors_env="${authors_env}${authors_env:+
+}$author"
+    emails_env="${emails_env}${emails_env:+
+}$email"
+    dates_env="${dates_env}${dates_env:+
+}$date"
+    messages_env="${messages_env}${messages_env:+
+}$message"
   fi
 
   rm -f "$tmpfile"
