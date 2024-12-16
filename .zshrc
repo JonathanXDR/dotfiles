@@ -17,7 +17,7 @@ for file in vars func aliases; do
   [[ ! -f "${HOME}/.shell/${file}.sh" ]] || source "${HOME}/.shell/${file}.sh"
 done
 
-proxy:probe
+# proxy:probe
 add-zsh-hook chpwd nvmrc:load
 bun:update
 nvm:update
