@@ -1,4 +1,4 @@
-# Dotfiles
+# dotfiles
 
 Keychain-backed, iCloud-synced macOS dotfiles.
 
