@@ -14,7 +14,7 @@
 # after adding a plugin to see whether this list needs another entry.
 
 # common-aliases makes rm, cp and mv interactive. rm is the urgent one. Its
-# alias has to go before the trash-put wrapper below can be defined at all,
+# alias has to go before the rm wrapper below can be defined at all,
 # because zsh refuses to declare a function whose name is an existing alias and
 # fails the whole file with a parse error at that line.
 unalias rm cp mv 2>/dev/null
@@ -92,34 +92,44 @@ cmd:exists python3 && alias python=python3
 cmd:exists btop    && alias top='btop'
 cmd:exists bat     && alias cat='bat --paging=never'
 
-# Safer rm, moving files to the Trash when trash-put is installed. Names
-# matching TRASH_SKIP (set in .exports) go to the real rm instead, so bulky
-# throwaway directories never pile up in ~/.local/share/Trash.
-if cmd:exists trash-put; then
+# Safer rm, moving files to the macOS Trash so Finder can put them back. Uses
+# the trash command that ships with macOS 15 and later, by full path so no
+# other `trash` on PATH can stand in for it.
+if [[ -x /usr/bin/trash ]]; then
   rm() {
-    local arg flags=() delete=() trash=()
-    for arg in "$@"; do
-      case "$arg" in
-        -*) flags+=("$arg") ;;
-        *)
-          # :t strips any trailing slash before taking the basename, which ${arg##*/}
-          # does not, so a completed `node_modules/` still matches TRASH_SKIP.
-          if [[ -n "${TRASH_SKIP:-}" && "${arg:t}" == (${~TRASH_SKIP}) ]]; then
-            delete+=("$arg")
-          else
-            trash+=("$arg")
-          fi
-          ;;
-      esac
+    # zsh defaults, whatever the caller set (agents often run set -euo pipefail)
+    emulate -L zsh
+    local arg real ret=0 opts=()
+    # Parse like BSD rm. A lone `-` is a file name, which zparseopts -D would
+    # drop. The letters are rm's minus -W (undelete), and f+ i+ keep the order
+    # of -f and -i, since the last one wins. An unknown option fails zparseopts
+    # with the arguments untouched, and the real rm rejects it before removing
+    # anything.
+    set -- "${@:/-/./-}"
+    zparseopts -D -F -a opts -- d f+ i+ I P R r v x 2>/dev/null ||
+      { command rm "$@"; return }
+    # The real rm keeps the whole call when there is no operand, so the caller
+    # gets its usage error, and when -i wins, so it asks before every removal.
+    # -I only guards against mistakes, which the Trash already undoes.
+    [[ $# -eq 0 || ${opts[(R)-[fi]]} == -i ]] &&
+      { command rm "${opts[@]}" -- "$@"; return }
+    # One operand at a time, in order, like rm. trash records Finder's Put Back
+    # location only for the first item of a run, and an operand that already
+    # went with an earlier one then reaches the real rm as missing.
+    for arg; do
+      # trash collapses .. as text, so hand it the parent resolved physically
+      real=${arg:h:P}/${arg:t}
+      # The real rm takes what trashing gets wrong: missing paths (reported, or
+      # silent under -f), `/`, `.` and `..` (refused), TRASH_SKIP names (set in
+      # .exports) for bulky throwaway directories, and anything already in a
+      # Trash, where trash silently does nothing. :t ignores a trailing slash.
+      if [[ ! -e $arg && ! -L $arg || ${arg:t} == (|.|..|${~TRASH_SKIP}) ||
+            $real == ($HOME/.Trash|/Volumes/*/.Trashes)(|/*) ]]; then
+        command rm "${opts[@]}" -- "$arg"
+      else
+        /usr/bin/trash ${opts[(r)-v]} "$real"
+      fi || ret=$?
     done
-    # No operands, whether the line was empty or only flags. Hand it to the real
-    # rm so the caller gets its usage error and exit status instead of a silent 0.
-    (( ${#delete[@]} + ${#trash[@]} )) || { command rm "$@"; return $? }
-    # Both branches are optional, so collect the exit status explicitly rather
-    # than leaving it to whichever arithmetic test runs last.
-    local ret=0
-    (( ${#delete[@]} )) && { command rm "${flags[@]}" "${delete[@]}" || ret=$? }
-    (( ${#trash[@]} ))  && { trash-put "${flags[@]}" "${trash[@]}" || ret=$? }
     return $ret
   }
 fi
@@ -176,18 +186,16 @@ alias:safe lscleanup="/System/Library/Frameworks/CoreServices.framework/Framewor
 alias:safe spotoff="sudo mdutil -a -i off"
 alias:safe spoton="sudo mdutil -a -i on"
 
-# Empty every Trash (mounted volumes, macOS, freedesktop), delete the Apple
+# Empty every Trash (mounted volumes and the home folder), delete the Apple
 # System Log archives, and clear the LaunchServices quarantine event database.
 #
-# (D) is what makes the freedesktop step complete. A bare * never matches a
-# leading dot, so every trashed name starting with one survived the sweep and
-# piled up. (N) lets a pattern that matches nothing expand to nothing instead
-# of failing its command with "no matches found", which is the normal state of
-# /Volumes with no external disk mounted and of the asl directory right after
-# a rotation. `rm -f` with no operands exits 0 quietly, so the empty case stays
+# (N) lets a pattern that matches nothing expand to nothing instead of failing
+# its command with "no matches found", which is the normal state of /Volumes
+# with no external disk mounted and of the asl directory right after a
+# rotation. `rm -f` with no operands exits 0 quietly, so the empty case stays
 # silent. The sqlite3 glob keeps the default on purpose. Expanding to nothing
 # there would hand the SQL to sqlite3 as a database name and open a prompt.
-alias:safe emptytrash="sudo /bin/rm -rfv /Volumes/*/.Trashes(N); sudo /bin/rm -rfv ~/.Trash; /bin/rm -rfv ~/.local/share/Trash/files/*(DN) ~/.local/share/Trash/info/*(DN); sudo /bin/rm -rfv /private/var/log/asl/*.asl(N); sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'"
+alias:safe emptytrash="sudo /bin/rm -rfv /Volumes/*/.Trashes(N); sudo /bin/rm -rfv ~/.Trash; sudo /bin/rm -rfv /private/var/log/asl/*.asl(N); sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'"
 
 # Recursively delete `.DS_Store` files
 alias:safe cleanup="find . -type f -name '*.DS_Store' -ls -delete"
