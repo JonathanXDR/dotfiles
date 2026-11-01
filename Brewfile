@@ -249,8 +249,6 @@ brew "telnet"
 brew "tesseract"
 # Anonymizing overlay network for TCP
 brew "tor"
-# Command-line interface to the freedesktop.org trashcan
-brew "trash-cli"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
 # Compress/expand executable files

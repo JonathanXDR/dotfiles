@@ -30,7 +30,6 @@ path:add "$HOME/.console-ninja/.bin"
 path:add "/Library/Frameworks/Python.framework/Versions/Current/bin"
 path:add "$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
 path:append "$HOME/Library/Application Support/Coursier/bin"
-path:add "/opt/homebrew/opt/trash-cli/bin"
 
 # Per-machine extras from .exports, appended to stay behind everything above
 path:append ${(s.:.)PATH_ADD}
