@@ -27,6 +27,14 @@ path = "skills/antfu-create-pr"
 repo = "antfu/skills"
 path = "skills/antfu-issue-triage"
 
+[agent_skills.antfu-query]
+repo = "antfu/skills"
+path = "skills/antfu-query"
+
+[agent_skills.antfu-simplify]
+repo = "antfu/skills"
+path = "skills/antfu-simplify"
+
 [agent_skills.ask-matt]
 repo = "mattpocock/skills"
 path = "skills/engineering/ask-matt"
@@ -329,6 +337,10 @@ path = "skills/in-progress/setup-ts-deep-modules"
 [agent_skills.slop-naming-recovery]
 repo = "harlan-zw/brundlefly"
 path = "skills/slop-naming-recovery"
+
+[agent_skills.software-factory]
+repo = "mattpocock/skills"
+path = "skills/in-progress/software-factory"
 
 [agent_skills.take-ownership]
 repo = "harlan-zw/harlan-agent-kit"
