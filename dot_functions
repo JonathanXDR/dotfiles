@@ -212,41 +212,75 @@ run:daily() {
   # what keeps a burst of new tabs from each starting its own copy of the same
   # update against the same clones.
   touch "$stamp"
-  # Bound the run. Every caller reaches the network and two drive a third-party
-  # tool, so a wedged update is a question of when, not if. Detached means
-  # nothing blocks the prompt to reveal it, so a hang just spins until reboot
-  # (seen once: 18 h of antidote at 100% CPU). timeout(1) is no use here because
-  # the callers are functions, not binaries, so watchdog the forked job. TERM
-  # first, since antidote traps it to remove its tmpdir.
+
+  # Detach into a new session, not just into the background. A job forked with
+  # `&!` from an interactive shell stays a process group on this terminal, and
+  # the terminal stops that whole group (SIGTTOU, SIGTTIN) as soon as anything
+  # in it changes the tty settings or reads from the tty. antidote 2.3.0 does
+  # the first on every run: its `read -rd ''` from a heredoc makes zsh switch
+  # the terminal out of canonical mode. The group stops, the watchdog's sleep
+  # with it, and the `$(...)` subshell, which zsh exempts from those signals,
+  # busy-loops on its stopped child at 100% CPU until killed (a macOS /bin/zsh
+  # 5.9 bug, fixed in 5.9.2), even after the tab closes. Seen for 18 h in
+  # September, 6 days from October 28 and 41 h from November 1.
   #
-  # The job is only a wrapper. Every caller runs its slow command inside $(...),
-  # and antidote forks a git worker per bundle below that, so the process that
-  # actually wedges sits one to three levels down. Signalling the job alone
-  # orphans it to keep spinning under launchd. Collect the tree before
-  # signalling, because killing a parent reparents its children beyond the reach
-  # of pgrep, and signal the job last, because the waiting parent kills this
-  # watchdog as soon as the job dies.
-  local timeout="${RUN_DAILY_TIMEOUT:-300}"
-  ( "$@" >| "${report}.new" 2>&1 &
-    local job=$! watchdog
-    ( sleep "$timeout"
-      local -a tree=( $job ) level=( $job )
-      while level=( ${(f)"$(pgrep -P ${(j:,:)level} 2>/dev/null)"} ); do tree=( $level $tree ); done
-      # Into the report, because this runs detached and log writes to stderr,
-      # which here is the terminal of whatever shell happened to start it. With
-      # nothing recorded, a command that times out every day looks exactly like
-      # one that had nothing to say, which is the invisibility this watchdog
-      # exists to end.
-      log warning "Timed out ${name} after ${timeout}s (killed it, run it by hand to see why)" 2>>"${report}.new"
-      # Detached, because the parent kills this watchdog the moment the job
-      # dies, which is the same instant the TERM below lands. Left inline, the
-      # escalation never runs and a descendant that ignores TERM keeps
-      # spinning, which is the hang this watchdog exists to end.
-      ( sleep 5; kill -KILL $tree 2>/dev/null ) &!
-      kill -TERM $tree 2>/dev/null ) & watchdog=$!
-    wait $job
-    kill $watchdog 2>/dev/null
-    command mv -f "${report}.new" "$report" ) &!
+  # A new session has no controlling terminal, so nothing in the job can reach
+  # this one: /dev/tty fails with ENXIO, a prompt fails instead of waiting, and
+  # closing the tab no longer hangs up a half-done update. macOS has no
+  # setsid(1), so perl forks and calls setsid(2), and a fresh zsh reloads these
+  # functions. `-f` keeps every other startup file out (the environment is
+  # inherited), and nice keeps the priority that BG_NICE used to give the job.
+  # The warning goes into the report, because startup stderr is not always on
+  # screen (the GitKraken ZDOTDIR shim in Zed terminals discards it).
+  [[ -x /usr/bin/perl ]] || {
+    log warning "Skipped ${name} (/usr/bin/perl is missing, so it cannot run detached)" 2>>"$report"
+    return 0
+  }
+  /usr/bin/perl -MPOSIX -e 'defined(my $pid = fork) or exit 1; exit 0 if $pid;
+      POSIX::setsid() > 0 or exit 1; exec @ARGV or exit 1' \
+    /usr/bin/nice -n 5 /bin/zsh -fc 'source "${HOME}/.functions" && _run:daily "$@"' \
+    run:daily "$name" "$report" "${RUN_DAILY_TIMEOUT:-300}" "$@" </dev/null >/dev/null 2>&1
+}
+
+# The detached half of run:daily. Runs the job under a watchdog and publishes
+# its report. Usage: _run:daily <name> <report> <timeout> <command...>
+#
+# Bound the run. Every caller reaches the network and two drive a third-party
+# tool, so a wedged update is a question of when, not if, and nothing in front
+# of the prompt reveals it. timeout(1) is no use here because the callers are
+# functions, not binaries, so watchdog the forked job. TERM first, since
+# antidote traps it to remove its tmpdir.
+#
+# The job is only a wrapper. Every caller runs its slow command inside $(...),
+# and antidote forks a git worker per bundle below that, so the process that
+# actually wedges sits one to three levels down. Signalling the job alone
+# orphans it to keep spinning under launchd. Collect the tree before
+# signalling, because killing a parent reparents its children beyond the reach
+# of pgrep, and signal the job last, because the waiting parent kills this
+# watchdog as soon as the job dies.
+_run:daily() {
+  local name="$1" report="$2" timeout="$3"; shift 3
+  local job watchdog
+
+  "$@" >| "${report}.new" 2>&1 </dev/null &
+  job=$!
+  ( sleep "$timeout"
+    local -a tree=( $job ) level=( $job )
+    while level=( ${(f)"$(pgrep -P ${(j:,:)level} 2>/dev/null)"} ); do tree=( $level $tree ); done
+    # Into the report, because nothing else sees this detached run. With
+    # nothing recorded, a command that times out every day looks exactly like
+    # one that had nothing to say, which is the invisibility this watchdog
+    # exists to end.
+    log warning "Timed out ${name} after ${timeout}s (killed it, run it by hand to see why)" 2>>"${report}.new"
+    # Detached, because the parent kills this watchdog the moment the job dies,
+    # which is the same instant the TERM below lands. Left inline, the
+    # escalation never runs and a descendant that ignores TERM keeps spinning,
+    # which is the hang this watchdog exists to end.
+    ( sleep 5; kill -KILL $tree 2>/dev/null ) &!
+    kill -TERM $tree 2>/dev/null ) & watchdog=$!
+  wait $job
+  kill $watchdog 2>/dev/null
+  command mv -f "${report}.new" "$report"
 }
 
 # Prepend directories to PATH, skipping the ones that do not exist.
