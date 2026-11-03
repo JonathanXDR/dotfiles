@@ -208,9 +208,11 @@ run:daily() {
 
   mkdir -p "${stamp:h}"
   # Stamp before launching rather than on success. Every caller already returns
-  # 0 unconditionally so the day gets stamped either way, and stamping first is
-  # what keeps a burst of new tabs from each starting its own copy of the same
-  # update against the same clones.
+  # 0 unconditionally so the day gets stamped either way, and stamping first
+  # keeps most of a burst of new tabs from each starting its own copy of the
+  # same update against the same clones. Tabs that start within a few
+  # milliseconds of each other still pass the check together, and the lock in
+  # _run:daily turns all but one of those copies away.
   touch "$stamp"
 
   # Detach into a new session, not just into the background. A job forked with
@@ -260,7 +262,17 @@ run:daily() {
 # watchdog as soon as the job dies.
 _run:daily() {
   local name="$1" report="$2" timeout="$3"; shift 3
-  local job watchdog
+  local job watchdog lockfd
+
+  # One run of each job at a time. A second copy would race the first on the
+  # same clones (git index.lock errors) and both would write into the same
+  # report.new, so whichever copy loses the lock leaves. The lock is released
+  # when this shell exits, even on SIGKILL, so it can never go stale. Without
+  # zsh/system the job runs unlocked rather than not at all.
+  if zmodload -F zsh/system b:zsystem 2>/dev/null; then
+    : >>"${report}.lock"
+    zsystem flock -t 0 -f lockfd "${report}.lock" 2>/dev/null || return 0
+  fi
 
   "$@" >| "${report}.new" 2>&1 </dev/null &
   job=$!
