@@ -172,9 +172,7 @@ Every new terminal runs these files and hooks in this order:
         │
 /etc/zprofile ───── macOS path_helper rebuilds PATH (login shells only)
         │
-~/.zprofile ─────── Restores the mise shims to the front of PATH, between Kiro CLI's blocks
-        │
-Kiro CLI pre ────── Launches kiro-cli-term unless ~/.zprofile did (must stay first in ~/.zshrc)
+~/.zprofile ─────── Restores the mise shims to the front of PATH
         │
 ~/.exports ──────── Env vars, history, zsh options
         │
@@ -189,8 +187,6 @@ plugins:load ────── Oh My Zsh plugins, compiled by antidote from ~/.
 ~/.completions ──── Completions, zsh plugins, autosuggestions, syntax highlighting
         │
 Runtime hooks ───── SSH agent, daily mise, brew, and plugin checks
-        │
-Kiro CLI post ───── Prompt hooks for autocomplete (must stay last in ~/.zshrc)
 ```
 
 Homebrew runs before the tool paths because `brew shellenv` prepends its own `bin` and `sbin`, and the tool paths have to land in front of them.

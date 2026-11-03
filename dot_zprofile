@@ -1,7 +1,3 @@
-
-# Kiro CLI pre block. Keep at the top of this file.
-[[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zprofile.pre.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zprofile.pre.zsh"
-
 # Sourced on login shells only, after .zshenv and /etc/zprofile.
 #
 # macOS ships an /etc/zprofile that runs `path_helper -s`, which rebuilds PATH
@@ -15,6 +11,3 @@
 # read this file. PATH survives path_helper with its `typeset -U` attribute
 # intact, so the entry stays deduplicated without re-declaring it.
 [[ -d "$HOME/.local/share/mise/shims" ]] && path=("$HOME/.local/share/mise/shims" $path)
-
-# Kiro CLI post block. Keep at the bottom of this file.
-[[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zprofile.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zprofile.post.zsh"

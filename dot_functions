@@ -327,10 +327,9 @@ _run:daily() {
 # Prepend directories to PATH, skipping the ones that do not exist.
 #
 # A directory already on PATH is prepended again rather than left alone.
-# Something earlier in startup may have appended it (the Kiro CLI pre block
-# does exactly that with ~/.local/bin), and skipping would leave the entry
-# behind /usr/bin instead of in front of it. `typeset -gU PATH path` in .zshenv
-# drops the older copy, so the entry moves rather than repeating.
+# Something earlier in startup may have appended it, and skipping would leave
+# the entry behind /usr/bin instead of in front of it. `typeset -gU PATH path`
+# in .zshenv drops the older copy, so the entry moves rather than repeating.
 path:add() {
   local dir
   for dir in "$@"; do
