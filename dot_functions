@@ -457,7 +457,19 @@ plugins:load() {
     fi
   fi
 
+  # Job control off while the bundle loads. Nine plugins (codex, docker,
+  # flutter, gh, helm, kubectl, ngrok, uv twice) regenerate completions in a
+  # `&|` job on every shell, the same shape that run:daily used to fork. With
+  # job control on, each job is a background process group on the terminal, and
+  # one generator that touches the tty would stop it and leave its `=(...)`
+  # waiter spinning at 100% CPU (see run:daily). With it off, the jobs stay in
+  # the shell's foreground group and read /dev/null, so the terminal cannot stop
+  # them. Only MONITOR is restored, not local_options, which would also undo the
+  # options the plugins set.
+  local monitor=$options[monitor]
+  unsetopt monitor
   [[ -f "$bundle" ]] && source "$bundle"
+  [[ "$monitor" == on ]] && setopt monitor
   return 0
 }
 
