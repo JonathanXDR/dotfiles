@@ -1,0 +1,305 @@
+#!/bin/zsh -f
+# Notify about processes that stay busy or stopped for too long.
+#
+# launchd runs this every two minutes (com.jonathan-russ.runaway-watch). Each
+# run takes one `ps` sample, compares every process's CPU time with the last
+# sample, and keeps its state under ~/.cache/runaway-watch. It never kills or
+# signals anything. It flags three things:
+#
+#   busy     One process averaging RUNAWAY_CPU_SHARE percent of a core (80)
+#            for RUNAWAY_CPU_MINUTES (15). A stuck process holds one core,
+#            about a tenth of this machine, which overall CPU alerts miss.
+#   stopped  A process group suspended for RUNAWAY_STOP_MINUTES (30), the way
+#            the old run:daily jobs stopped on the terminal.
+#   gpu      Overall GPU load at RUNAWAY_GPU_SHARE percent (80) for
+#            RUNAWAY_GPU_MINUTES (15). GPU time per process needs root, so
+#            this one names the busiest CPU processes instead.
+#
+# CPU time is tracked per PID, and macOS keeps no total for a parent's exited
+# children, so a loop that keeps starting short-lived commands is not flagged.
+#
+# Each finding is announced once as a notification and logged to
+# ~/Library/Logs/runaway-watch.log. While it lasts it is also listed in
+# ~/.cache/runaway-watch/alerts, which every new terminal shell prints
+# (runaway:alerts in .functions), because a Focus mode files notifications away
+# without a banner. Expected heavy work goes in ~/.config/runaway-watch/ignore.
+#
+# Usage: runaway-watch          take one sample (what launchd runs)
+#        runaway-watch status   show what is flagged or building up right now
+
+emulate -L zsh
+setopt extended_glob
+zmodload zsh/datetime
+# launchd starts this without a locale and a terminal has one. The same one
+# for both keeps ps output and the cleaned-up process names identical.
+export LC_ALL=C
+
+typeset state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/runaway-watch"
+typeset ignore_file="${XDG_CONFIG_HOME:-$HOME/.config}/runaway-watch/ignore"
+typeset log_file="${HOME}/Library/Logs/runaway-watch.log"
+
+typeset -i cpu_share=${RUNAWAY_CPU_SHARE:-80} gpu_share=${RUNAWAY_GPU_SHARE:-80}
+typeset -i cpu_after=$(( ${RUNAWAY_CPU_MINUTES:-15} * 60 ))
+typeset -i stop_after=$(( ${RUNAWAY_STOP_MINUTES:-30} * 60 ))
+typeset -i gpu_after=$(( ${RUNAWAY_GPU_MINUTES:-15} * 60 ))
+# Two samples taken closer together than this give a noisy rate, as when the
+# command is run by hand right after launchd ran it.
+typeset -i min_interval=${RUNAWAY_MIN_INTERVAL:-30}
+# Samples further apart than three launchd intervals had a gap between them,
+# usually sleep, which is not observed load. Busy and GPU streaks start over.
+typeset -i max_gap=${RUNAWAY_MAX_GAP:-360}
+
+typeset -i now=$EPOCHSECONDS
+
+# "42 min" or "3 h 05 min"
+duration() {
+  local -i s=$1
+  if (( s >= 3600 )); then
+    REPLY=$(( s / 3600 ))" h "${(l:2::0:)$(( s % 3600 / 60 ))}" min"
+  else
+    REPLY=$(( s / 60 ))" min"
+  fi
+}
+
+# ps prints CPU time as [[dd-]hh:]mm:ss.cc, with minutes allowed past 59.
+# Centiseconds, so that a difference over a number of seconds reads directly
+# as percent of one core.
+centiseconds() {
+  local t=$1 d=0 h=0 m s
+  [[ "$t" == *-* ]] && { d=${t%%-*}; t=${t#*-} }
+  local -a part=( ${(s.:.)t} )
+  if (( $#part == 3 )); then
+    h=$part[1] m=$part[2] s=$part[3]
+  else
+    m=$part[1] s=$part[2]
+  fi
+  [[ "$s" == *.* ]] || s="$s.0"
+  REPLY=$(( ((d * 24 + h) * 60 + m) * 6000 + ${s%.*} * 100 + ${s#*.} ))
+}
+
+notify() {
+  # Arguments through argv, so a process name can never break the script
+  /usr/bin/osascript -e 'on run argv' \
+    -e 'display notification (item 3 of argv) with title (item 1 of argv) subtitle (item 2 of argv)' \
+    -e 'end run' -- "$1" "$2" "$3" >/dev/null 2>&1
+}
+
+record() {
+  print -r -- "$(strftime '%Y-%m-%d %H:%M:%S' $now) $1" >>| "$log_file"
+}
+
+local line
+local -a f
+
+if [[ "${1:-}" == status ]]; then
+  if [[ -s "${state_dir}/alerts" ]]; then
+    print -r -- "Flagged:"
+    print -r -- "$(<"${state_dir}/alerts")"
+  else
+    print -r -- "Flagged: nothing"
+  fi
+  # Averages run to the last sample, which is when the CPU times were taken
+  local -i sampled=${$(<"${state_dir}/stamp" 2>/dev/null):-$now}
+  print -r -- "Building up (busy streaks):"
+  [[ -r "${state_dir}/procs" ]] && for line in "${(@f)$(<"${state_dir}/procs")}"; do
+    f=( "${(@ps:\t:)line}" )
+    (( $#f == 6 && f[3] > 0 && sampled > f[3] )) || continue
+    duration $(( sampled - f[3] ))
+    print -r -- "  PID $f[1]  $f[6]  $(( (f[2] - f[4]) / (sampled - f[3]) ))% of a core over $REPLY"
+  done
+  exit 0
+fi
+
+mkdir -p "$state_dir" "${log_file:h}"
+
+local -a ignore=()
+[[ -r "$ignore_file" ]] && ignore=( ${${(f)"$(<"$ignore_file")"}:#([[:space:]]#|[[:space:]]#\#*)} )
+
+local stamp
+[[ -r "${state_dir}/stamp" && -r "${state_dir}/procs" ]] && stamp=$(<"${state_dir}/stamp")
+# A stamp in the future means the clock was set back. Starting over beats
+# skipping every run until the clock catches up.
+local -i prev_time=0
+[[ "$stamp" == <-> ]] && (( stamp <= now )) && prev_time=$stamp
+local -i elapsed=$(( now - prev_time ))
+(( prev_time > 0 && elapsed < min_interval )) && exit 0
+local -i gap=$(( prev_time > 0 && elapsed > max_gap ))
+
+# Previous sample, per pid: CPU centiseconds, busy streak start (seconds) and
+# the CPU time at that start, whether it was announced, and the process name
+local -A prev_cpu prev_since prev_since_cpu prev_note prev_name
+if (( prev_time > 0 && ! gap )); then
+  for line in "${(@f)$(<"${state_dir}/procs")}"; do
+    f=( "${(@ps:\t:)line}" )
+    (( $#f == 6 )) || continue
+    prev_cpu[$f[1]]=$f[2] prev_since[$f[1]]=$f[3] prev_since_cpu[$f[1]]=$f[4]
+    prev_note[$f[1]]=$f[5] prev_name[$f[1]]=$f[6]
+  done
+fi
+
+# Stopped process groups, per pgid: stopped since, whether it was announced.
+# A gap does not reset these, because a group stays suspended through sleep.
+local -A stop_since stop_note
+if (( prev_time > 0 )) && [[ -r "${state_dir}/stopped" ]]; then
+  for line in "${(@f)$(<"${state_dir}/stopped")}"; do
+    f=( ${=line} )
+    (( $#f == 3 )) && { stop_since[$f[1]]=$f[2]; stop_note[$f[1]]=$f[3] }
+  done
+fi
+
+local -a procs_out alerts shares
+local -A stopped_name stopped_members leader_running
+local pid pgid st name pat
+local -i cpu share since since_cpu note average ignored
+for line in "${(@f)$(ps -A -o pid=,pgid=,stat=,time=,ucomm=)}"; do
+  f=( ${=line} )
+  # ps prints names raw, so a newline in one starts a line of its own. Only
+  # rows whose fields have the right shape reach the arithmetic below.
+  (( $#f >= 5 )) || continue
+  [[ $f[1] == <-> && $f[2] == <-> && $f[4] == (<->-|)(<->:|)<->:<->(.<->|) ]] || continue
+  pid=$f[1] pgid=$f[2] st=$f[3] name="${(j: :)f[5,-1]}"
+  # Control characters would reach notifications and every terminal
+  name=${name//[^ -~]/?}
+  (( pid == $$ )) && continue
+  centiseconds $f[4]; cpu=$REPLY
+
+  # A streak starts at cpu_share and survives dips down to half of it. A
+  # loaded machine (load average 162 the day the old shells spun) hands even
+  # a stuck process less than a full core at times, and a single low sample
+  # must not restart the clock. Whether to flag it is decided on the average
+  # over the streak.
+  since=0 since_cpu=0 note=0
+  if (( prev_time > 0 )) && [[ -n "${prev_cpu[$pid]}" && "${prev_name[$pid]}" == "$name" ]]; then
+    share=$(( (cpu - prev_cpu[$pid]) / elapsed ))
+    (( share >= 5 )) && shares+=( "${share}"$'\t'"${name}" )
+    if (( prev_since[$pid] > 0 && share >= cpu_share / 2 )); then
+      since=${prev_since[$pid]} since_cpu=${prev_since_cpu[$pid]} note=${prev_note[$pid]}
+      # Hours at a moderate rate must not dilute a new run at full rate, so
+      # a streak that averages below cpu_share restarts when one comes
+      if (( share >= cpu_share && prev_time > since
+            && (prev_cpu[$pid] - since_cpu) / (prev_time - since) < cpu_share )); then
+        since=$prev_time since_cpu=${prev_cpu[$pid]}
+      fi
+    elif (( share >= cpu_share )); then
+      since=$prev_time since_cpu=${prev_cpu[$pid]}
+    fi
+  fi
+
+  if (( since > 0 && now - since >= cpu_after )); then
+    average=$(( (cpu - since_cpu) / (now - since) ))
+    ignored=0
+    for pat in $ignore; do
+      [[ "$name" == ${~pat} ]] && { ignored=1; break }
+    done
+    if (( average >= cpu_share && ! ignored )); then
+      duration $(( now - since ))
+      alerts+=( "PID ${pid}  ${name}  busy at ${average}% of a core for ${REPLY} (stop it with 'kill ${pid}')" )
+      if (( ! note )); then
+        notify "Runaway process" "${name} (PID ${pid})" \
+          "${average}% of a core for ${REPLY}. Stop it with kill ${pid}."
+        record "busy pid=${pid} name=${name} average=${average}% for=${REPLY} command=$(ps -o command= -p $pid 2>/dev/null)"
+        note=1
+      fi
+    fi
+  fi
+  procs_out+=( "${pid}"$'\t'"${cpu}"$'\t'"${since}"$'\t'"${since_cpu}"$'\t'"${note}"$'\t'"${name}" )
+
+  # Named after its leader if the leader is stopped, else its first stopped
+  # member. Group 1 and lower never qualify, so no alert can suggest
+  # `kill -- -1`, which signals every process the user owns.
+  if [[ "$st" == T* ]]; then
+    if (( pgid > 1 )); then
+      [[ "$pid" == "$pgid" || -z "${stopped_name[$pgid]}" ]] && stopped_name[$pgid]=$name
+      stopped_members[$pgid]+="${stopped_members[$pgid]:+,}${pid}"
+    fi
+  elif [[ "$pid" == "$pgid" ]]; then
+    leader_running[$pgid]=1
+  fi
+done
+
+# Whether every listed member is still in that group and stopped. Asks ps
+# again for the numbers alone, because a crafted name can add a fake row.
+still_stopped() {
+  local row
+  local -a g
+  local out=$(ps -o pgid=,stat= -p "$2" 2>/dev/null)
+  [[ -n "$out" ]] || return 1
+  for row in ${(f)out}; do
+    g=( ${=row} )
+    [[ "$g[1]" == "$1" && "$g[2]" == T* ]] || return 1
+  done
+}
+
+local -a stopped_out
+local label remedy
+for pgid in ${(k)stopped_name}; do
+  since=${stop_since[$pgid]:-$now} note=${stop_note[$pgid]:-0}
+  if (( now - since >= stop_after )); then
+    still_stopped $pgid "${stopped_members[$pgid]}" || continue
+    # While the leader runs, killing the group would take it and its work too
+    if (( ${+leader_running[$pgid]} )); then
+      label="PID ${stopped_members[$pgid]//,/ } in PGID ${pgid}"
+      remedy="kill -KILL ${stopped_members[$pgid]//,/ }"
+    else
+      label="PGID ${pgid}"
+      remedy="kill -KILL -- -${pgid}"
+    fi
+    duration $(( now - since ))
+    alerts+=( "${label}  ${stopped_name[$pgid]}  suspended for ${REPLY} (if you did not press Ctrl-Z there, stop it with '${remedy}')" )
+    if (( ! note )); then
+      notify "Stopped process group" "${stopped_name[$pgid]} (${label})" \
+        "Suspended for ${REPLY}. If you did not press Ctrl-Z, it is stuck."
+      record "stopped pgid=${pgid} name=${stopped_name[$pgid]} for=${REPLY} stopped_members=${stopped_members[$pgid]} leader_running=${+leader_running[$pgid]}"
+      note=1
+    fi
+  fi
+  stopped_out+=( "${pgid} ${since} ${note}" )
+done
+
+# Overall GPU load, the highest "Device Utilization %" any accelerator
+# reports. State: streak start, whether it was announced, and the sum and
+# count of its samples.
+local -i gpu=0 gpu_since=0 gpu_note=0 gpu_sum=0 gpu_n=0 value
+local -a gpu_state
+(( prev_time > 0 && ! gap )) && [[ -r "${state_dir}/gpu" ]] && gpu_state=( $(<"${state_dir}/gpu") )
+if (( $#gpu_state == 4 )) && [[ "${(j::)gpu_state}" == <-> ]]; then
+  gpu_since=$gpu_state[1] gpu_note=$gpu_state[2] gpu_sum=$gpu_state[3] gpu_n=$gpu_state[4]
+fi
+for value in ${(f)"$(/usr/sbin/ioreg -r -d 1 -w 0 -c IOAccelerator 2>/dev/null \
+    | grep -o '"Device Utilization %"=[0-9]*' | grep -o '[0-9]*$')"}; do
+  (( value > gpu )) && gpu=$value
+done
+# The same streak rules as for CPU, over the samples themselves, because a
+# GPU job dips while it loads data or saves a checkpoint
+if (( gpu >= gpu_share || (gpu_since > 0 && gpu >= gpu_share / 2) )); then
+  if (( gpu_since == 0 || gpu_n == 0 || (gpu >= gpu_share && gpu_sum / gpu_n < gpu_share) )); then
+    gpu_since=$now gpu_sum=0 gpu_n=0
+  fi
+  (( gpu_sum += gpu, gpu_n += 1 ))
+  average=$(( gpu_sum / gpu_n ))
+  if (( now - gpu_since >= gpu_after && average >= gpu_share )); then
+    duration $(( now - gpu_since ))
+    local -a top3=( ${${(On)shares}[1,3]} )
+    local top="${(j:, :)${(@)top3/$'\t'/% }}"
+    [[ -n "$top" ]] || top="none above 5%"
+    alerts+=( "GPU  at ${average}% for ${REPLY} (busiest CPU processes ${top}, Activity Monitor shows GPU per process)" )
+    if (( ! gpu_note )); then
+      notify "GPU busy" "${average}% for ${REPLY}" "Busiest CPU processes ${top}. Check Activity Monitor's GPU column."
+      record "gpu average=${average}% now=${gpu}% for=${REPLY} busiest=${top}"
+      gpu_note=1
+    fi
+  fi
+else
+  gpu_since=0 gpu_note=0 gpu_sum=0 gpu_n=0
+fi
+
+# Write the new state, each file replaced in one rename
+print -r -- $now >| "${state_dir}/stamp"
+print -rl -- $procs_out >| "${state_dir}/procs.new" && mv -f "${state_dir}/procs.new" "${state_dir}/procs"
+print -rl -- $stopped_out >| "${state_dir}/stopped.new" && mv -f "${state_dir}/stopped.new" "${state_dir}/stopped"
+print -r -- "$gpu_since $gpu_note $gpu_sum $gpu_n" >| "${state_dir}/gpu"
+if (( $#alerts )); then
+  print -rl -- "  "${^alerts} >| "${state_dir}/alerts.new" && mv -f "${state_dir}/alerts.new" "${state_dir}/alerts"
+else
+  command rm -f "${state_dir}/alerts"
+fi

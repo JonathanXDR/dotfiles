@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+{{ template "shell-helpers" . }}
+
+# Agent definition hash (triggers a re-run when the LaunchAgent changes):
+# {{ include "private_Library/LaunchAgents/com.jonathan-russ.runaway-watch.plist.tmpl" | sha256sum }}
+#
+# launchd loads anything in ~/Library/LaunchAgents at the next login on its
+# own, so this only covers the apply that adds or changes the agent. The
+# watcher script itself needs no reload, because launchd starts it afresh on
+# every interval.
+
+label="com.jonathan-russ.runaway-watch"
+plist="${HOME}/Library/LaunchAgents/${label}.plist"
+domain="gui/$(id -u)"
+
+if [[ ! -f "$plist" ]]; then
+  _log warning "Skipped the runaway watcher (${plist} is missing)"
+  exit 0
+fi
+
+launchctl bootout "${domain}/${label}" 2>/dev/null || true
+
+# bootout returns before launchd has finished removing the job, and a
+# bootstrap that arrives too early fails with "Input/output error"
+for _ in 1 2 3 4 5; do
+  if launchctl bootstrap "$domain" "$plist" 2>/dev/null; then
+    _log success "Loaded the runaway watcher (${label})"
+    exit 0
+  fi
+  sleep 1
+done
+
+_log error "Failed to load the runaway watcher (run 'launchctl bootstrap ${domain} ${plist}' to see why)"
+exit 1

@@ -1194,6 +1194,24 @@ secrets:export() {
 
 # ----------------------- macOS System Tweaks & Utilities -------------------- #
 
+# Print what the runaway watcher currently flags. Usage: runaway:alerts
+#
+# ~/.local/bin/runaway-watch runs every two minutes from launchd and lists a
+# process that stays busy, a group that stays suspended, or a GPU that stays
+# loaded. It also sends a notification, but a Focus mode files that away
+# without a banner, so every new terminal says it again until the problem is
+# gone. A list older than ten minutes means the agent itself stopped, so it is
+# not repeated as current, and neither is one dated in the future (`^ms-0`, as
+# in run:daily). File tests only, no fork.
+runaway:alerts() {
+  local alerts="${XDG_CACHE_HOME:-$HOME/.cache}/runaway-watch/alerts"
+  [[ -t 1 ]] || return 0
+  local -a current=( ${alerts}(N.L+0mm-10^ms-0) )
+  (( ${#current} )) || return 0
+  log warning "Detected runaway processes (details with runaway-watch status)" 2>&1
+  print -r -- "$(<"$alerts")"
+}
+
 # Let Touch ID authenticate sudo, by adding pam_tid to /etc/pam.d/sudo_local.
 #
 # That file is the supported place for this since macOS 14. /etc/pam.d/sudo

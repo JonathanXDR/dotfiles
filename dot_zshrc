@@ -59,6 +59,8 @@ source "${HOME}/.completions"
 
 [[ "${AUTOSTART_SSH_AGENT}" == "true" ]] && ssh:agent
 
+runaway:alerts
+
 cmd:exists mise && run:daily mise mise:update
 cmd:exists brew && run:daily brew brew:check
 [[ -f "${HOME}/.plugins" ]] && run:daily plugins plugins:update

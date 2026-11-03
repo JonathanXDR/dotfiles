@@ -1,0 +1,33 @@
+# Processes the runaway watcher (~/.local/bin/runaway-watch) never flags as
+# busy. One glob per line, matched against the process name as `ps -o ucomm`
+# prints it (at most 16 characters). Stopped groups and GPU load are always
+# reported. Expected long, heavy work belongs here, a helper that spins does not.
+
+# Virtual machines (UTM, Apple Virtualization)
+QEMULauncher
+qemu-*
+com.apple.Virtua*
+
+# Indexing, media analysis and backups, which macOS runs in long bursts
+mds
+mds_stores
+mdworker*
+mdbulkimport
+corespotlightd
+mediaanalysisd
+photoanalysisd
+backupd*
+
+# Compilers and build systems
+clang
+swift-frontend
+swift-build
+rustc
+cc1*
+ld
+XCBBuildService
+
+# Encoders and downloaders that run for hours by design
+ffmpeg
+HandBrakeCLI
+aed*

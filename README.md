@@ -186,7 +186,7 @@ plugins:load ────── Oh My Zsh plugins, compiled by antidote from ~/.
         │
 ~/.completions ──── Completions, zsh plugins, autosuggestions, syntax highlighting
         │
-Runtime hooks ───── SSH agent, daily mise, brew, and plugin checks
+Runtime hooks ───── SSH agent, runaway alerts, daily mise, brew, and plugin checks
 ```
 
 Homebrew runs before the tool paths because `brew shellenv` prepends its own `bin` and `sbin`, and the tool paths have to land in front of them.
@@ -220,9 +220,11 @@ The source maps onto `$HOME` like this:
 ├── dot_gitignore_global                     # Global gitignore
 ├── private_dot_npmrc.tmpl                   # npm registry tokens (0600, from keychain)
 ├── private_dot_wakatime.cfg.tmpl            # WakaTime API key (0600, from keychain)
+├── dot_local/bin/executable_runaway-watch   # Flags stuck processes, busy GPU (every 2 min, launchd)
 ├── dot_config/                              # ~/.config
 │   ├── hosts                                # /etc/hosts source
 │   ├── mise/config.toml                     # Language runtimes + global CLI packages
+│   ├── runaway-watch/ignore                 # Heavy work the runaway watcher leaves alone
 │   └── zed/private_settings.json.tmpl       # Zed editor settings (0600, from keychain)
 ├── private_dot_claude/                      # ~/.claude/ (0700)
 │   ├── private_CLAUDE.md                    # Global Claude Code instructions (all projects)
@@ -230,8 +232,9 @@ The source maps onto `$HOME` like this:
 │   ├── private_hooks/                       # Claude Code guard hooks and session notices
 │   └── private_plugins/                     # Claude Code plugin and marketplace state
 ├── private_Library/                         # ~/Library (0700)
-│   └── Application Support/
-│       └── Code/User/                       # VS Code settings & keybindings
+│   ├── Application Support/
+│   │   └── Code/User/                       # VS Code settings & keybindings
+│   └── LaunchAgents/                        # Runaway watcher agent
 │
 └── Brewfile                                 # Homebrew packages
 ```
