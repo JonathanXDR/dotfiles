@@ -201,6 +201,26 @@ run:daily() {
   # is the only place a timeout or a failed update ever shows up.
   [[ -t 1 && -s "$report" ]] && { cat "$report"; command rm -f "$report" }
 
+  # A run still alive well past its timeout means the watchdog failed as well,
+  # the way the old background job stopped together with its watchdog. Say so
+  # in every terminal shell until it is gone, rather than letting it spin
+  # unnoticed for days. A pid file left by a run that died without cleaning up
+  # (reboot, SIGKILL) is removed, and so is one whose pid now belongs to some
+  # other process. The age test is a glob qualifier, so this costs no fork
+  # unless a pid file is overdue.
+  local pidfile="${stamp}.pid"
+  local -i limit=$(( ${RUN_DAILY_TIMEOUT:-300} / 60 + 2 ))
+  local -a overdue=( ${pidfile}(N.mm+${limit}) )
+  if (( ${#overdue} )); then
+    local pid=$(<"$pidfile")
+    if [[ "$pid" == <-> ]] && kill -0 "$pid" 2>/dev/null \
+        && [[ "$(ps -o command= -p "$pid" 2>/dev/null)" == *_run:daily* ]]; then
+      [[ -t 1 ]] && log warning "Detected ${name} still running after ${limit} minutes (stop it with 'kill -- -${pid}')" 2>&1
+    else
+      command rm -f "$pidfile"
+    fi
+  fi
+
   # `mh-24` also matches a stamp dated in the future (clock skew, restored
   # backup), which would gate the command off forever, so exclude that case
   # with `^ms-0`. Not `ms+0`, which demands an age of at least a second and so
@@ -277,6 +297,11 @@ _run:daily() {
     zsystem flock -t 0 -f lockfd "${report}.lock" 2>/dev/null || return 0
   fi
 
+  # For the overdue check in run:daily. $$ leads this session's process group,
+  # so `kill -- -$$` stops everything the run started.
+  local pidfile="${report%.report}.pid"
+  print -r -- $$ >| "$pidfile"
+
   "$@" >| "${report}.new" 2>&1 </dev/null &
   job=$!
   ( sleep "$timeout"
@@ -296,6 +321,7 @@ _run:daily() {
   wait $job
   kill $watchdog 2>/dev/null
   command mv -f "${report}.new" "$report"
+  command rm -f "$pidfile"
 }
 
 # Prepend directories to PATH, skipping the ones that do not exist.
