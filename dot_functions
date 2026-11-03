@@ -196,7 +196,10 @@ run:daily() {
 
   # Whatever the last detached run printed, shown once. The run writes this
   # file only when it finishes, so there is no half-written report to catch.
-  [[ -s "$report" ]] && { cat "$report"; command rm -f "$report" }
+  # Only a terminal gets it. Shells without one (an editor capturing the login
+  # environment, Claude Code's shell snapshot) would swallow it, and the report
+  # is the only place a timeout or a failed update ever shows up.
+  [[ -t 1 && -s "$report" ]] && { cat "$report"; command rm -f "$report" }
 
   # `mh-24` also matches a stamp dated in the future (clock skew, restored
   # backup), which would gate the command off forever, so exclude that case
