@@ -127,6 +127,7 @@ Dotfiles/
 ├── private_dot_wakatime.cfg.tmpl                        # WakaTime API key (0600, from keychain)
 ├── dot_local/private_share/.keep                        # Keeps ~/.local/share at 0700, which holds the Agent Skills clones
 ├── dot_local/bin/executable_runaway-watch               # Flags stuck processes and a busy GPU, run by launchd every 2 min
+├── dot_local/bin/executable_claude-account-browser      # Opens a URL in the Chrome profile of a Claude Code account
 ├── dot_config/
 │   ├── hosts                                            # /etc/hosts source
 │   ├── mise/config.toml                                 # Language runtimes + global CLI packages
@@ -153,6 +154,10 @@ Dotfiles/
 │   └── keybindings.json                                 # VS Code keybindings
 ├── private_Library/LaunchAgents/
 │   └── com.jonathan-russ.runaway-watch.plist.tmpl       # Runs runaway-watch every 2 min (home dir templated)
+│
+│   # Tests (not copied to $HOME)
+│
+├── tests/claude-accounts.zsh                            # Regression tests for the claude:* functions, with stubs
 │
 │   # Package list (read by a run script, not copied to $HOME)
 │
@@ -394,6 +399,63 @@ Info:    Fix or drop each entry above in .chezmoidata/skills.toml, or run skills
 > [!NOTE]
 > `~/.agents/.skill-lock.json` is left over from `npx skills`, which installed this set before chezmoi did. It is inert, but running `npx skills update` would write over directories the script now owns. Declare skills in `.chezmoidata/skills.toml` instead. `npx skills find` is still the way to discover new ones.
 
+### Claude Code Accounts
+
+Extra accounts are optional. Plain `claude` stays the primary account in `~/.claude`, and only `claude:add` creates anything. An extra account is a directory under `~/.claude-accounts` that `claude:as` passes as `CLAUDE_CONFIG_DIR`, the mechanism [the authentication docs](https://code.claude.com/docs/en/authentication) name for staying signed in to several accounts. Claude Code then keeps `.claude.json`, session history and everything else below in that directory, and keys the keychain item on its path.
+
+```text
+~/.claude/                     primary account, and the shared configuration chezmoi manages
+├── settings.json  <────────┐
+├── CLAUDE.md      <────────┤
+├── commands/      <────────┤  one symlink per entry, for the entries that exist
+├── skills/<name>  <────────┤
+└── plugins/       <──┐     │
+                      │     │
+~/.claude-accounts/work/    │  CLAUDE_CONFIG_DIR of the account "work"
+├── settings.json  ───┼─────┤
+├── CLAUDE.md      ───┼─────┤
+├── commands       ───┼─────┤
+├── skills/<name>  ───┼─────┘
+├── skills/synced/    │        claude.ai skills of this account
+├── .claude.json      │        login metadata, trust, per-project state
+├── projects/         │        transcripts and auto memory
+└── plugins/          │        not created, CLAUDE_CODE_PLUGIN_CACHE_DIR points up
+```
+
+| Component                                 | How an account gets it                            | Reason                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `settings.json`                           | Symlink, required before any launch               | It registers the guard hooks. Claude Code writes through one symlink hop and keeps the link                                   |
+| `CLAUDE.md`, `commands`, and other config | Symlink for each entry that exists in `~/.claude` | A real file or directory in the account stays, which is how an account keeps its own version                                  |
+| Skills                                    | One symlink per skill, refreshed at each launch   | `skills/synced` holds the claude.ai skills of the signed-in account, so the directory itself stays per account                |
+| Hooks                                     | Nothing needed                                    | `settings.json` names them by absolute path                                                                                   |
+| Plugins                                   | `CLAUDE_CODE_PLUGIN_CACHE_DIR=~/.claude/plugins`  | One store with the same absolute paths for every account. `enabledPlugins` comes with `settings.json`                         |
+| User MCP servers                          | `--mcp-config=~/.claude.json` at launch           | They live in `.claude.json`, which stays per account. The flag reads only `mcpServers`, so there is no copy to keep in sync   |
+| Login, MCP OAuth, plugin secrets          | Per account                                       | One keychain item per config directory. `ANTHROPIC_CONFIG_DIR` moves Console logins, which `CLAUDE_CONFIG_DIR` does not cover |
+| History, memory, trust, global config     | Per account                                       | All of it sits in the account's `projects/`, `history.jsonl` or `.claude.json`, next to the state that has to stay separate   |
+
+Everything `claude:as` sets exists only in the environment of the launched process and its children. `claude:_run` starts the command from a subshell and unsets what a shell or parent session passes down that would replace the account's login or mark the launch as a child session, so a launch from inside another session runs as a session of its own on the account's own login. Launching an account therefore changes neither the calling shell nor the login of another account. It does not stop a running session from doing so, as the first limit below explains.
+
+**Claude in Chrome.** Claude Code 2.1.318 reaches the browser only through the relay at `wss://bridge.claudeusercontent.com/chrome/<account UUID>`, and the extension joins the room of the account it is signed in to. Login, `deviceId` and the relay connection all belong to one Chrome profile, so one profile per account keeps the browsers apart, and a session on one account does not see a browser signed in to another.
+
+- `claude:chrome <account>` opens the profile `Profile claude-<account>`, and Chrome creates it on first use. The extension connects only while its profile is loaded, so keep a window of it open.
+- `claude:as` sets `BROWSER` to `claude-account-browser`, so `/login` and MCP sign-ins open in that profile. The default browser may hold another account's claude.ai session and would sign the account in as that one without saying so. `claude:accounts` warns when two accounts share an identity.
+- Sessions on one account share its browser, and the extension gives each session its own tab group. Two signed-in profiles on one account count as two browsers, and `/chrome` picks between them. The choice is stored per account.
+- The native messaging manifest exists once per browser, and every `--chrome` start rewrites it to point at its own config directory. That is harmless: the extension prefers the Claude Desktop host, and neither host carries Claude Code's tool calls.
+
+**Limits.**
+
+- This separates accounts, not users. Everything runs as one macOS user, so a process on one account can read the files and keychain item of another, or sign it out.
+- Separation in Chrome rests on the shipped client code of Claude Code 2.1.318 and the extension, plus a stub relay. The real relay has not run with two signed-in accounts yet, so the first real setup should confirm that each account lists only its own browser.
+- `settings.json` is one file for every account. `/model`, the first-run theme picker and most `/config` options write it, so a change from any account applies to all of them, and none of it reaches the template by itself. A few `/config` options stay in the account's `.claude.json`, and tips, reduced motion and output style write the project's `.claude/settings.local.json`.
+- A plugin installed or updated from any account changes the store for all of them, and `plugins/data/<id>` and `plugins/store` are shared. Two installs at the same moment can lose a registry entry, as they can between two sessions on one account.
+- Claude Code has no cross-process lock for `settings.json`, so two simultaneous writes keep only the last, also as on one account.
+- `claude mcp list` shows only the account's own servers, because the shared ones arrive through the flag. `claude mcp add` from an account stays in that account.
+- From a directory under `$HOME`, Claude Code also reads `~/.claude/CLAUDE.md` and `~/.claude/rules` as project files, so an account's own `CLAUDE.md` adds to the shared one there instead of replacing it.
+- From `$HOME` itself Claude Code would also read `~/.claude/settings.json` as project settings and write a project row for every enabled plugin into the shared registry. Those rows outlast the session, so `claude:as` passes `--setting-sources=user,local` there. A session started in `$HOME` therefore reads no project source: `~/CLAUDE.md`, `~/.mcp.json` and the `CLAUDE.md` files, rules and skills of directories below it do not load, with no warning. `/fork` and `/tui` also refuse, blaming launch flags you did not type, while `/branch` still works. Starting in the project directory avoids all of this.
+- Do not move or rename an account directory. The keychain item is keyed on the exact path, so the login would stay behind. `claude:remove` signs out first for the same reason.
+- `/tmp/claude-<uid>`, `.mcp.json` and the rest of a project's `.claude/` stay shared between accounts by design. Each account accepts the trust dialog and project MCP servers once.
+- Editor integrations run under the process that starts them, so Zed and VS Code stay on the primary account.
+
 ### Shell Loading Order
 
 When a new terminal opens, startup runs in this exact order. zsh reads the first three files on its own, then `~/.zshrc` drives the rest:
@@ -477,6 +539,9 @@ Every script includes `{{ template "shell-helpers" . }}`, which provides shared 
 | Edit global Claude Code instructions | `private_dot_claude/private_CLAUDE.md`                                                             |
 | Change a Claude Code guard hook      | `private_dot_claude/private_hooks/`                                                                |
 | Change the paths Claude cannot touch | `.chezmoidata.toml` (`claude_blocked_paths`)                                                       |
+| Add a Claude Code account            | `claude:add <account>`, then `claude:as <account>`                                                 |
+| List or remove Claude Code accounts  | `claude:accounts`, `claude:remove <account>`                                                       |
+| Test the account functions           | `zsh -f tests/claude-accounts.zsh`                                                                 |
 | Add or remove an Agent Skill         | `.chezmoidata/skills.toml`                                                                         |
 | Follow everyone one person publishes | `.chezmoidata/skills.toml` (`agent_skill_owners`), then `skills:sync`                              |
 | Find out why a skill is missing      | The `Failed to install the <name> skill` errors at the end of `chezmoi apply`                      |
@@ -546,3 +611,8 @@ Every script includes `{{ template "shell-helpers" . }}`, which provides shared 
 | **Plugins that duplicate declared skills disabled**            | `frontend-design`, `mattpocock-skills` and `skill-creator` ship skills the inventory already declares for every agent. Two copies of a skill both reach the model, and the plugin's copy is pinned to whatever the marketplace last published rather than tracking upstream. The reverse holds for `plugin-dev` and `hookify`: their skills only matter in Claude Code, so the plugin keeps them and the inventory does not declare them.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **One sparse clone per repository, not an archive per skill**  | chezmoi unpacks every `archive` external again on each command that computes the target state, so one archive per skill made `apply`, `diff`, `status` and `edit` take about 40 seconds at 400 skills, and each tarball carried a whole repository for one folder. A shallow, blobless, sparse clone per repository fetches only the declared folders (5 MB instead of 126 MB for HyperFrames), and chezmoi commands take well under a second.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **The run script owns the clones, not chezmoi externals**      | chezmoi stops a whole apply at the first external that fails, and only the `--keep-going` flag changes that. As externals, one deleted upstream repository, a force-push or a week offline would keep `.zshrc` and everything after it from applying. In the script, the same failure is a warning and every other skill still installs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Extra accounts as `CLAUDE_CONFIG_DIR` directories**          | A settings file can set the variable, but measured on 2.1.318 that moves the configuration and leaves `.claude.json` and the keychain item behind, so `claude:as` sets it in the launch environment. The primary never sets it, because any value at all, even `~/.claude`, renames the keychain item and would look like a sign-out. Accounts are found by listing `~/.claude-accounts`, with no list in `.chezmoidata.toml`: a name in the repository would add nothing the directory does not already say. |
+| **Symlinks over a rendered copy per account**                  | chezmoi maps one source entry to one target and cannot create a variable number of targets from data, so a per-account copy would need a script and could drift. The symlinks point at the files chezmoi already manages, so `chezmoi apply` reaches every account at once. A second account writing through the link changes the same `~/.claude/settings.json`, and the change still has to be copied into `private_settings.json.tmpl` by hand, because `chezmoi add` would replace the template with rendered output. Layering the shared file with `--settings` would keep `/model` per account, but a launch without the flag would then run with no guard hooks. |
+| **`CLAUDE_CODE_PLUGIN_CACHE_DIR` over the plugin seed directory**| The seed looks read-only and safe, and it passes on a small fixture. At real scale 36 of 49 enabled plugins missed: it derives a version from the marketplace entry and never reads `installed_plugins.json`, so a plugin with a `sha` source and its own version number is never found. A shared root had no misses with two accounts running at once. Symlinking `plugins` also works, but an account would then write its own path into the shared registry. |
+| **The primary's `.claude.json` as `--mcp-config`**             | MCP servers have no file-based user scope: `mcpServers` in `settings.json` is ignored, and copying the key into each account's `.claude.json` means writing a file Claude Code locks without that lock. The flag reads the primary's file in place, tolerates the other keys, and always reflects the current definitions. It needs the `=` form and an `mcpServers` key, or it swallows the next argument or fails. |
+| **One Chrome profile per account over a `--user-data-dir` each**| In the client code the relay needs nothing from the native host, and login, `deviceId` and relay connection are per profile, so a separate data directory adds no isolation. It would cost a second Chrome process and leave that directory without native messaging manifests. Chrome recommends profiles for keeping accounts apart, and the name starts with `Profile ` because Claude Code scans only `Default` and `Profile *` for the extension. |

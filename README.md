@@ -13,6 +13,7 @@ Keychain-backed, iCloud-synced macOS dotfiles.
 - 🌱 **Auto-activating runtimes:** Switches Node, Python, Ruby, and Java to the pinned version on `cd`.
 - ⚡ **Fast startup:** Caches completions and plugins, and runs the mise, brew, and plugin checks once a day.
 - 🧠 **Agent Skills:** Declares 400+ skills in one file for Claude Code, Codex, Copilot, and Gemini.
+- 👥 **Claude Code accounts:** Runs several accounts at once on one shared configuration, each with its own login and Chrome profile.
 - 🛠️ **Shell toolkit:** Adds 70+ functions for Docker, secrets, toolchains, and Git, plus 125+ aliases.
 - ♻️ **Idempotent bootstrap:** Sets up Homebrew, packages, tools, and secrets, and is safe to re-run.
 
@@ -163,6 +164,27 @@ Info:    Fix or drop each entry above in .chezmoidata/skills.toml, or run skills
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md#agent-skills) for the full picture.
 
+## 👥 Claude Code Accounts
+
+Extra Claude Code accounts are optional. Plain `claude` stays the primary account in `~/.claude`, and nothing changes until you add one. Each extra account signs in on its own, and they can all run at the same time, even in the same project:
+
+```bash
+claude:add work          # Create the account and sign it in
+claude:as work           # Start Claude Code as that account
+claude:as work --resume  # Arguments go to claude, after the alias flags
+claude:accounts          # Show every account and what it is signed in to
+claude:chrome work       # Open the account's Chrome profile
+claude:remove work       # Sign out and move the account to the Trash
+```
+
+Every account uses the same settings, instructions, hooks, skills, plugins, and MCP servers, so you keep editing them in one place. That goes both ways: a setting changed from any account, `/model` included, applies to all of them. Logins, history, and memory stay separate.
+
+Start an account in the project itself. A session started in `$HOME` skips the `CLAUDE.md` files, rules, and skills of the projects below it.
+
+Browser tools need one Chrome profile per account, because the Claude in Chrome extension serves the account it is signed in to. `claude:add` opens the sign-in page and the extension page in a profile reserved for the account. Install the extension there, sign in to it, and keep that profile open while you use browser tools.
+
+[ARCHITECTURE.md](./ARCHITECTURE.md#claude-code-accounts) lists what is shared, what stays separate, and the known limits.
+
 ## 🐚 Shell Loading Order
 
 Every new terminal runs these files and hooks in this order:
@@ -221,6 +243,7 @@ The source maps onto `$HOME` like this:
 ├── private_dot_npmrc.tmpl                   # npm registry tokens (0600, from keychain)
 ├── private_dot_wakatime.cfg.tmpl            # WakaTime API key (0600, from keychain)
 ├── dot_local/bin/executable_runaway-watch   # Flags stuck processes, busy GPU (every 2 min, launchd)
+├── dot_local/bin/executable_claude-account-browser # Opens a URL in an account's Chrome profile
 ├── dot_config/                              # ~/.config
 │   ├── hosts                                # /etc/hosts source
 │   ├── mise/config.toml                     # Language runtimes + global CLI packages
@@ -236,6 +259,7 @@ The source maps onto `$HOME` like this:
 │   │   └── Code/User/                       # VS Code settings & keybindings
 │   └── LaunchAgents/                        # Runaway watcher agent
 │
+├── tests/                                   # Shell regression tests (not copied to $HOME)
 └── Brewfile                                 # Homebrew packages
 ```
 
