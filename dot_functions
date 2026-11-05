@@ -1653,7 +1653,8 @@ skills:sync() {
 
 # Internal: print the CLAUDE_CONFIG_DIR of an account. Claude Code keys the
 # keychain item on this exact string, so a trailing slash or a path through a
-# symlink would be a different login.
+# symlink would be a different login. The name check also keeps claude:remove
+# inside ~/.claude-accounts.
 # Usage: claude:_path <account>
 claude:_path() {
   if [[ -z "$1" || "$1" == *[^a-z0-9-]* || "$1" == -* ]]; then
@@ -1878,6 +1879,33 @@ claude:add() {
 
   claude:accounts
   log success "Added ${account} (start it with claude:as ${account})"
+}
+
+# Sign an account out and move its directory to the Trash, so that its
+# transcripts stay recoverable. Signing out first matters: the keychain item is
+# keyed on the path, and nothing could find it once the directory is gone. The
+# Chrome profile stays, since it may hold other logins.
+# Usage: claude:remove <account>
+claude:remove() {
+  (( $# == 1 )) || { echo "Usage: claude:remove <account>" >&2; return 1; }
+  emulate -L zsh
+  local account="$1" home session reply
+  home="$(claude:_home "$account")" || return 1
+
+  for session in "${home}"/sessions/<->.json(N); do
+    kill -0 "${session:t:r}" 2>/dev/null || continue
+    log error "Rejected removing ${account} (process ${session:t:r} still runs a session)"
+    return 1
+  done
+
+  printf "Sign out %s and move %s to the Trash? [y/N] " "$account" "$home"
+  read -r reply
+  [[ "$reply" == [yY]* ]] || { log info "Canceled (nothing changed)"; return 1; }
+
+  claude:_run "$home" claude auth logout >/dev/null \
+    || { log error "Failed to sign out ${account} (nothing removed, run claude:remove ${account} to retry)"; return 1; }
+  command trash "$home" || { log error "Failed to move ${home} to the Trash"; return 1; }
+  log success "Removed ${account}"
 }
 
 # ------------------------------------ Git ----------------------------------- #
