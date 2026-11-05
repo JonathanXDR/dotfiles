@@ -1,0 +1,21 @@
+#!/bin/sh
+# Open a URL in the Chrome profile of the Claude Code account this process runs
+# as, or just the profile with no URL. claude:as sets this as BROWSER, so that a
+# sign-in lands in the profile that belongs to the account and not in the
+# default browser, where another account may be signed in to claude.ai.
+#
+# Claude Code sends every clicked link through BROWSER, so a link for an app
+# such as vscode: or slack: goes to `open` as it would without this script.
+#
+# `open -n` hands the arguments to a running Chrome, which creates the profile
+# on first use. The directory name starts with "Profile " because Default and
+# Profile * are the only names Claude Code scans for the extension.
+
+: "${CLAUDE_CONFIG_DIR:?run this through claude:as or claude:chrome}"
+
+case "${1:-https:}" in
+  http:* | https:*) ;;
+  *) exec open "$@" ;;
+esac
+
+exec open -na "Google Chrome" --args --profile-directory="Profile claude-${CLAUDE_CONFIG_DIR##*/}" "$@"
