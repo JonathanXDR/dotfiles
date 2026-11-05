@@ -94,6 +94,13 @@ if (( ${#COMPDEF_DEFERRED} )); then
 fi
 unset COMPDEF_DEFERRED
 
+# Account names for the claude:* functions in .functions. An account is a
+# directory, so the completion reads them from there.
+_claude_accounts() {
+  (( CURRENT == 2 )) && compadd -- "${HOME}"/.claude-accounts/*(N/:t)
+}
+compdef _claude_accounts claude:as claude:chrome claude:remove
+
 # Angular CLI autocompletion, from the wrapper the CLI generates itself.
 #
 # The hand-written version this replaces called `ng --get-yargs-completions`
