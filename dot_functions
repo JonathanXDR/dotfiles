@@ -1634,6 +1634,252 @@ skills:sync() {
   return 0
 }
 
+# ------------------------------- Claude Code -------------------------------- #
+#
+# Optional extra Claude Code accounts. Plain `claude` stays the primary account
+# in ~/.claude and nothing here touches it. An extra account is a directory
+# under ~/.claude-accounts used as CLAUDE_CONFIG_DIR, which gives it its own
+# login, keychain item, .claude.json and session history. Its configuration
+# comes from ~/.claude, so chezmoi keeps managing a single copy.
+# ARCHITECTURE.md covers what is shared, what stays separate and what Chrome
+# needs.
+#
+# Naming: claude:* takes one account, claude:accounts lists them all. Helpers
+# are claude:_* and there is no global, because Claude Code's shell snapshot
+# drops functions named _* and plain variables, and these have to work from its
+# Bash tool too.
+#
+# ---------------------------------------------------------------------------- #
+
+# Internal: print the CLAUDE_CONFIG_DIR of an account. Claude Code keys the
+# keychain item on this exact string, so a trailing slash or a path through a
+# symlink would be a different login.
+# Usage: claude:_path <account>
+claude:_path() {
+  if [[ -z "$1" || "$1" == *[^a-z0-9-]* || "$1" == -* ]]; then
+    log error "Rejected account name '$1' (use lowercase letters, digits and hyphens)"
+    return 1
+  fi
+  print -r -- "${HOME}/.claude-accounts/$1"
+}
+
+# Internal: print the CLAUDE_CONFIG_DIR of an account that exists.
+# Usage: claude:_home <account>
+claude:_home() {
+  local home
+  home="$(claude:_path "$1")" || return 1
+  [[ -d "$home" ]] || { log error "Failed to find account $1 (add it with claude:add $1)"; return 1; }
+  print -r -- "$home"
+}
+
+# Internal: link an account to the shared configuration in ~/.claude. This runs
+# before every launch, so a skill or agent added since the last one appears, and
+# it skips whatever is already right.
+#
+# A real file or directory in the way stays, which is how an account keeps its
+# own version. settings.json is the exception: it registers the guard hooks, and
+# with --dangerously-skip-permissions those are the only guard, so no session
+# may start without it. Each link is one hop on purpose, because Claude Code
+# writes settings through a single symlink and replaces a second one with a
+# regular file.
+#
+# skills gets one link per entry, because skills/synced holds the skills of the
+# signed-in claude.ai account and has to stay separate.
+#
+# Launches at the same moment race to create these links. `ln` without -f never
+# removes a link another launch just made, so the loser fails on a link that is
+# already right and carries on. -f is left for repairing a wrong link, where a
+# launch at the same moment can stop on settings.json until a retry. Among the
+# links only settings.json stops a launch.
+# Usage: claude:_link-shared <home>
+claude:_link-shared() {
+  emulate -L zsh
+  local home="$1" shared="${HOME}/.claude" entry
+  local -a missing stale
+
+  for entry in settings.json CLAUDE.md agents commands keybindings.json output-styles rules themes workflows; do
+    [[ -e "${shared}/${entry}" ]] || continue
+    [[ "${home}/${entry}" -ef "${shared}/${entry}" ]] && continue
+    [[ -e "${home}/${entry}" && ! -L "${home}/${entry}" ]] && continue
+    ln -sn "${shared}/${entry}" "${home}/${entry}" 2>/dev/null \
+      || [[ "${home}/${entry}" -ef "${shared}/${entry}" ]] \
+      || ln -sfn "${shared}/${entry}" "${home}/${entry}" 2>/dev/null
+  done
+  [[ "${home}/settings.json" -ef "${shared}/settings.json" ]] || {
+    log error "Failed to link ${home}/settings.json to ${shared}/settings.json (the guard hooks live there, run chezmoi apply or move the file away)"
+    return 1
+  }
+
+  mkdir -p "${home}/skills" || return 1
+  stale=( "${home}"/skills/*(N-@) )
+  (( ${#stale} )) && command rm -f -- "${stale[@]}"
+  for entry in "${shared}"/skills/*(N); do
+    [[ "${entry:t}" == synced || -e "${home}/skills/${entry:t}" ]] || missing+=( "$entry" )
+  done
+  (( ${#missing} )) && ln -s "${missing[@]}" "${home}/skills/" 2>/dev/null
+  return 0
+}
+
+# Internal: run a command as an account, in a subshell so that nothing reaches
+# this shell. All of this has to be in the environment at launch:
+# CLAUDE_CONFIG_DIR in a settings file moves the configuration but leaves
+# .claude.json and the keychain item behind.
+#
+# CLAUDE_CODE_PLUGIN_CACHE_DIR gives every account the plugin root of ~/.claude
+# under the same absolute paths. ANTHROPIC_CONFIG_DIR moves the Console login
+# store, which CLAUDE_CONFIG_DIR does not cover: left in ~/.config/anthropic, a
+# new account would pass as signed in and a logout would delete another
+# account's login. BROWSER sends sign-ins to the account's Chrome profile,
+# because the default browser may hold another account's claude.ai session and
+# would sign this one in as that account without saying so.
+#
+# The unset list names what a shell or a parent Claude Code session passes down
+# that would take over from the account's own login or mark this launch as a
+# child of that session. Other session variables stay, since they do neither.
+# Usage: claude:_run <home> <command> [args...]
+claude:_run() {
+  local home="$1"; shift
+  (
+    unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_PROFILE \
+      CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_OAUTH_REFRESH_TOKEN \
+      CLAUDE_CODE_SESSION_ACCESS_TOKEN CLAUDE_CODE_ACCOUNT_UUID \
+      CLAUDE_SECURESTORAGE_CONFIG_DIR CLAUDE_CODE_BRIDGE_SESSION_ID \
+      CLAUDE_CODE_CHILD_SESSION CLAUDE_CODE_ENTRYPOINT CLAUDE_EFFORT CLAUDECODE
+    export CLAUDE_CONFIG_DIR="$home" \
+      CLAUDE_CODE_PLUGIN_CACHE_DIR="${HOME}/.claude/plugins" \
+      ANTHROPIC_CONFIG_DIR="${home}/anthropic" \
+      BROWSER="${HOME}/.local/bin/claude-account-browser"
+    exec "$@"
+  )
+}
+
+# Internal: print how far an account's Chrome profile is set up. Whether the
+# extension is signed in sits in its own storage, so claude:accounts cannot say.
+# Usage: claude:_chrome-state <account>
+claude:_chrome-state() {
+  local profile="${HOME}/Library/Application Support/Google/Chrome/Profile claude-$1"
+  if [[ -d "${profile}/Extensions/fcoeoabgfenejglbffodgkkbkcdhcgfn" ]]; then
+    print -r -- "extension installed"
+  elif [[ -d "$profile" ]]; then
+    print -r -- "no extension"
+  else
+    print -r -- "no profile"
+  fi
+}
+
+# Run Claude Code as an account, with the flags of the `claude` alias. Arguments
+# go after those flags, so a later --effort wins over the alias.
+#
+# The alias is read at call time, since this file loads before .aliases. User
+# MCP servers live in .claude.json, which stays per account, so the primary's
+# file goes in as --mcp-config, which reads only its mcpServers key and fails
+# without one. The = form matters: the flag takes several values and would
+# swallow the arguments after it.
+#
+# From $HOME an account also finds ~/.claude/settings.json as project settings.
+# Claude Code then writes a project row for every enabled plugin into the shared
+# registry, and `claude plugin list` shows each plugin twice for every account.
+# Those rows outlast the session, so the flag drops the project source there.
+# That also costs the session the project files of $HOME and below, as the
+# limits in ARCHITECTURE.md list, and starting in the project directory avoids
+# it.
+# Usage: claude:as <account> [claude args...]
+claude:as() {
+  (( $# >= 1 )) || { echo "Usage: claude:as <account> [claude args...]" >&2; return 1; }
+  emulate -L zsh
+  local home
+  home="$(claude:_home "$1")" || return 1
+  shift
+  claude:_link-shared "$home" || return 1
+
+  local -a flags
+  if jq -e 'has("mcpServers")' "${HOME}/.claude.json" &>/dev/null; then
+    flags+=( "--mcp-config=${HOME}/.claude.json" )
+  fi
+  [[ "$PWD" -ef "$HOME" ]] && flags+=( "--setting-sources=user,local" )
+  claude:_run "$home" ${=aliases[claude]:-claude} "${flags[@]}" "$@"
+}
+
+# Open an account's Chrome profile, at a web URL if given. Chrome creates the
+# profile the first time. Browser tools need it open, because the extension only
+# connects while its profile is loaded.
+# Usage: claude:chrome <account> [url]
+claude:chrome() {
+  (( $# >= 1 && $# <= 2 )) || { echo "Usage: claude:chrome <account> [url]" >&2; return 1; }
+  local home
+  home="$(claude:_home "$1")" || return 1
+  claude:_run "$home" "${HOME}/.local/bin/claude-account-browser" "${@:2}"
+}
+
+# List every account with the claude.ai identity its .claude.json records and
+# the state of its Chrome profile. Accounts on one identity connect to the same
+# browsers, which is what a sign-in in the wrong browser leaves behind, so that
+# gets a warning.
+claude:accounts() {
+  emulate -L zsh
+  cmd:exists jq || { log error "Failed to find jq"; return 1; }
+
+  local name config email org uuid chrome
+  local -A owner
+  local -a rows warnings
+  rows=( $'ACCOUNT\tEMAIL\tORGANIZATION\tCHROME' )
+
+  for name in "(primary)" "${HOME}/.claude-accounts"/*(N/:t); do
+    if [[ "$name" == "(primary)" ]]; then
+      config="${HOME}/.claude.json" chrome="(any profile)"
+    else
+      config="${HOME}/.claude-accounts/${name}/.claude.json" chrome="$(claude:_chrome-state "$name")"
+    fi
+    email="" org="" uuid=""
+    IFS=$'\t\t' read -r email org uuid < <(
+      jq -r '.oauthAccount // {} | [.emailAddress, .organizationName, .accountUuid] | map(. // "") | @tsv' "$config" 2>/dev/null
+    )
+    rows+=( "${name}"$'\t'"${email:-(signed out)}"$'\t'"${org:-(none)}"$'\t'"${chrome}" )
+    [[ -n "$uuid" ]] || continue
+    if [[ -n "${owner[$uuid]:-}" ]]; then
+      warnings+=( "$name" "${owner[$uuid]}" )
+    else
+      owner[$uuid]="$name"
+    fi
+  done
+
+  print -rl -- "${rows[@]}" | column -t -s $'\t'
+  while (( ${#warnings} )); do
+    log warning "Detected ${warnings[1]} and ${warnings[2]} on one claude.ai account (sign in again with claude:as ${warnings[1]} auth login)"
+    shift 2 warnings
+  done
+}
+
+# Create an account and sign it in, or finish a setup that stopped halfway. The
+# sign-in opens in the account's own Chrome profile, and the extension signs in
+# from the same claude.ai session, so both end up on one identity.
+# Usage: claude:add <account>
+claude:add() {
+  (( $# == 1 )) || { echo "Usage: claude:add <account>" >&2; return 1; }
+  emulate -L zsh
+  whence -p claude >/dev/null || { log error "Failed to find claude"; return 1; }
+  local account="$1" home
+  home="$(claude:_path "$account")" || return 1
+
+  mkdir -p "$home" && chmod 700 "${home:h}" "$home" \
+    || { log error "Failed to create ${home}"; return 1; }
+  claude:_link-shared "$home" || return 1
+
+  if ! claude:_run "$home" claude auth status &>/dev/null; then
+    log info "Opening the sign-in page in the Chrome profile of ${account}…"
+    claude:_run "$home" claude auth login \
+      || { log error "Failed to sign in ${account} (run claude:add ${account} to retry)"; return 1; }
+  fi
+
+  if [[ "$(claude:_chrome-state "$account")" != "extension installed" ]]; then
+    claude:chrome "$account" "https://claude.ai/chrome"
+    log info "Install Claude in Chrome in the profile that just opened, then sign in to it"
+  fi
+
+  claude:accounts
+  log success "Added ${account} (start it with claude:as ${account})"
+}
+
 # ------------------------------------ Git ----------------------------------- #
 
 # Git-powered colored diff (named gdiff to avoid shadowing /usr/bin/diff)
