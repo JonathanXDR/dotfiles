@@ -1,56 +1,22 @@
-# Agent Skills this machine should have, and where each one comes from. This
-# file is the whole inventory: nothing installs a skill that is not listed here.
-#
-# On every `chezmoi apply`, run_after_10-agent-skills keeps one sparse git clone
-# per source repository under agent_skills_store, links each skill from it into
-# agent_skills_home, installs the licensed ones, links every skill into the
-# agents that need a link, removes what this file no longer lists, and reports
-# any skill that did not arrive. The skills of agent_skill_owners are resolved
-# into .chezmoidata/skills-owners.toml, which completes this inventory.
-#
-# To add a skill, add an entry. To remove one, delete its entry. Either way the
-# next `chezmoi apply` converges. See ARCHITECTURE.md for the full picture.
-
-# Where every skill is installed, relative to $HOME. The Agent Skills discovery
-# convention names ~/.agents/skills as the shared personal location, and OpenAI
-# Codex, GitHub Copilot CLI and Gemini CLI all read it with no configuration at
-# all. agent_skills_link_dirs below covers the agents that do not.
+# Codex, Copilot CLI and Gemini CLI all read this discovery location with no
+# configuration
 agent_skills_home = ".agents/skills"
 
-# Where the sparse clones of the source repositories live, relative to $HOME.
-# Skills in agent_skills_home are symlinks into these, so nothing is copied.
-# The clones are mirrors: an edit made there is lost at the next update.
+# The clones are mirrors: an edit made there is lost at the next update
 agent_skills_store = ".local/share/agent-skills"
 
-# Agent skill directories that get a symlink per skill, for agents that do not
-# read agent_skills_home themselves. Each entry is skipped unless the agent's
-# own directory already exists, so an agent this machine does not have costs
-# nothing.
-#
-# Only Claude Code needs this. It reads ~/.claude/skills and nothing else, and
-# a per-skill symlink there is the mechanism its own documentation describes.
-# Codex, Copilot and Gemini are deliberately absent: each already finds the
-# shared directory, and a second copy would only spend their skill budget
-# listing everything twice.
+# Only Claude Code needs a link per skill. The others find the shared directory,
+# and a second copy would spend their skill budget listing everything twice.
 agent_skills_link_dirs = [
   ".claude/skills", # Claude Code
 ]
 
-# How many days a clone goes without an update. Any apply past this age updates
-# it, so keeping skills current needs no separate workflow. Set
-# AGENT_SKILLS_REFRESH=1 for one `chezmoi apply` to update every clone now.
 agent_skills_refresh_days = 7
 
-# People whose entire published catalogue is wanted, rather than named skill by
-# skill. `skills:sync` resolves this list through the skilld.dev registry and
-# rewrites .chezmoidata/skills-owners.toml from it. The resolved entries are
-# committed, so an apply never talks to the registry and a new machine gets
-# exactly what this repository records.
-#
-# A skill named in this file wins over one the registry would generate for a
-# watched owner, which is how an exception is made. Run `skills:sync` after
+# The resolved entries are committed, so an apply never talks to the registry. A
+# skill named in this file wins over a generated one. Run `skills:sync` after
 # naming one, because until the generated entry is gone chezmoi merges the two
-# key by key. `skills:sync` reports each one it skipped for that reason.
+# key by key.
 agent_skill_owners = [
   "antfu",
   "danielroe",
@@ -58,29 +24,17 @@ agent_skill_owners = [
   "mattpocock",
 ]
 
-# One entry per skill, keyed by the directory name it gets under
-# agent_skills_home, sorted by that name. It is also what every agent shows in
-# its skill list, so keep it equal to the `name` in the skill's own SKILL.md.
-# Two skills cannot share a name, so where two sources offer the same one, the
-# project's own repository wins over a third-party copy.
+# Keyed by the directory name under agent_skills_home, which has to equal the
+# `name` in the skill's SKILL.md. Where two sources offer one name, the
+# project's own repository wins.
 #
-# At most one source key per entry decides where the contents come from:
-#
-#   repo   GitHub repository. Add `path` when the skill is a subdirectory, and
-#          `ref` when it does not live on the repository's default branch. This
-#          covers everything public.
-#   git    An SSH clone URL, for a private repository. It is cloned whole into
-#          agent_skills_home, edited in place, and only ever fast-forwarded.
-#   url    A licensed tarball, which needs `token`, `account` and `header` too.
-#          `token` and `account` name a managed keychain entry (see
-#          `secrets:list`), and run_after_10-agent-skills sends it in the
-#          `header` request header, which chezmoi externals cannot do. Nothing
-#          about the license reaches git.
-#   (none) An empty entry. This repository owns the skill, and its contents
-#          live in dot_agents/skills/<name>/, which chezmoi symlinks into
-#          agent_skills_home like any other plain file. Use it for a skill with
-#          no appropriate upstream that is small enough and safe enough to
-#          commit here, remembering that this repository is public.
+#   repo   GitHub repository, with `path` for a subdirectory and `ref` off the
+#          default branch
+#   git    An SSH clone URL for a private repository, cloned whole and only ever
+#          fast-forwarded
+#   url    A licensed tarball. `token` and `account` name a keychain entry, sent
+#          in the `header` request header.
+#   (none) This repository owns the skill, in dot_agents/skills/<name>/
 
 [agent_skills.adding-dependencies]
 repo = "riekelt/principal-engineer"
@@ -631,11 +585,8 @@ path = "health"
 repo = "heroui-inc/heroui"
 path = "skills/heroui-native"
 
-# Licensed, and the license forbids redistributing any part of the package, so
-# these two can only ever be fetched from HeroUI with a personal token. The
-# token lives in the dotfiles keychain under the (`token`, `account`) pair
-# below, the same lookup key `secret:set` uses, and reaches the download as a
-# request header.
+# The license forbids redistributing any part of the package, so these can only
+# be fetched from HeroUI with a personal token
 [agent_skills.heroui-pro-design-taste]
 url = "https://docs.heroui.pro/docs/skills/heroui-pro-design-taste.tar.gz"
 token = "HeroUI Pro"
@@ -1113,10 +1064,8 @@ path = "spec"
 repo = "n8n-io/n8n"
 path = ".agents/skills/spec-driven-development"
 
-# Written here rather than published, because it documents an employer's
-# internal stack. This repository is public, so the contents live in a private
-# repository, cloned over SSH. Edit the clone in place under agent_skills_home
-# and push from there.
+# Private because it documents an employer's internal stack, and this repository
+# is public
 [agent_skills.stake-engine-slot-development]
 git = "git@github.com:JonathanXDR/stake-engine-slot-development-skill.git"
 
