@@ -432,5 +432,158 @@ command rm -rf "${accounts}/fresh/sessions"
 print -r -- y | claude:remove fresh >/dev/null
 check "an account with no sessions directory can be removed" test ! -e "${accounts}/fresh"
 
+# ---------------------------- Memory write lock ---------------------------- #
+
+hooks="$HOME/.claude/hooks"
+mkdir -p "$hooks" "$accounts/mem" "$HOME/.claude/projects/-app/memory"
+for name in lock-memory-writes; do
+  cp "${repo}/private_dot_claude/private_hooks/private_executable_${name}.sh" "${hooks}/${name}.sh"
+  chmod +x "${hooks}/${name}.sh"
+done
+claude:as mem
+memory="$HOME/.claude/projects/-app/memory"
+linked="$accounts/mem/projects/-app/memory"
+lock="${memory}/.write-lock"
+template="${repo}/private_dot_claude/private_settings.json.tmpl"
+
+# These run from this shell, so $$ is the session a hook sees as its parent.
+memory_hook() {
+  jq -n --arg e "$1" --arg t "$2" --arg i "$3" --arg p "$4" \
+    '{hook_event_name: $e, tool_name: $t, tool_use_id: $i, tool_input: {file_path: $p}}' \
+    | "${hooks}/lock-memory-writes.sh"
+}
+
+print -r -- '- one' > "${memory}/MEMORY.md"
+check "an edit takes the lock" memory_hook PreToolUse Edit t1 "${memory}/MEMORY.md"
+check "the lock names its owner" same "$(readlink "$lock")" "t1 $$"
+memory_hook PostToolUse Edit other "${memory}/MEMORY.md"
+check "another call's result leaves the lock" test -L "$lock"
+memory_hook PostToolUse Edit t1 "${memory}/MEMORY.md"
+check "the call's result releases the lock" test ! -L "$lock"
+
+check "an account's spelling locks the real store" memory_hook PreToolUse Edit t2 "${linked}/MEMORY.md"
+check "the lock sits in the real store" same "$(readlink "$lock")" "t2 $$"
+memory_hook PostToolUseFailure Edit t2 "${linked}/MEMORY.md"
+check "a failed call releases the lock" test ! -L "$lock"
+
+memory_hook PreToolUse Write t3 "${memory}/MEMORY.md" 2>/dev/null
+check "a Write over a memory is blocked" same "$?" 2
+check "a blocked Write leaves no lock" test ! -L "$lock"
+check "a blocked Write names the way out" has "$(memory_hook PreToolUse Write t3 "${linked}/MEMORY.md" 2>&1)" "Change it with Edit"
+check "a Write of a new memory passes" memory_hook PreToolUse Write t4 "${memory}/new.md"
+memory_hook PostToolUse Write t4 "${memory}/new.md"
+: > "${memory}/empty.md"
+check "a Write over an empty file passes" memory_hook PreToolUse Write t5 "${memory}/empty.md"
+memory_hook PostToolUse Write t5 "${memory}/empty.md"
+mkdir -p "$accounts/mem/agent-memory/reviewer" "${tmp}/repo/.claude/agent-memory/reviewer"
+print -r -- note > "$accounts/mem/agent-memory/reviewer/MEMORY.md"
+print -r -- note > "${tmp}/repo/.claude/agent-memory/reviewer/MEMORY.md"
+check "agent memory is covered" fails memory_hook PreToolUse Write t6 "$accounts/mem/agent-memory/reviewer/MEMORY.md"
+check "project agent memory is covered" fails memory_hook PreToolUse Write t7 "${tmp}/repo/.claude/agent-memory/reviewer/MEMORY.md"
+mkdir -p "$HOME/work/memory" "$HOME/.claude/projects/-app"
+print -r -- code > "$HOME/work/memory/notes.md"
+print -r -- log > "$HOME/.claude/projects/-app/session.jsonl"
+check "an ordinary memory folder is left alone" memory_hook PreToolUse Write t8 "$HOME/work/memory/notes.md"
+check "a transcript is left alone" memory_hook PreToolUse Write t9 "$HOME/.claude/projects/-app/session.jsonl"
+check "an ordinary file takes no lock" test ! -L "$HOME/work/memory/.write-lock"
+
+dead="$(zsh -fc 'print -r -- $$')"
+ln -s "old ${dead}" "$lock"
+waited=$SECONDS
+check "a dead holder loses the lock" memory_hook PreToolUse Edit t10 "${memory}/MEMORY.md"
+check "a dead holder is not waited for" test $(( SECONDS - waited )) -lt 3
+check "the new owner took over" same "$(readlink "$lock")" "t10 $$"
+memory_hook PostToolUse Edit t10 "${memory}/MEMORY.md"
+
+sleep 120 &
+live=$!
+ln -s "stuck ${live}" "$lock"
+check "a stuck holder loses the lock" memory_hook PreToolUse Edit t11 "${memory}/MEMORY.md"
+check "the waiter took over" same "$(readlink "$lock")" "t11 $$"
+memory_hook PostToolUse Edit t11 "${memory}/MEMORY.md"
+
+# Four sessions, each its own process, doing the read-modify-write the lock has to
+# make exclusive. Without the lock these lose lines almost every run.
+cat > "${tmp}/session" <<'SESSION'
+#!/bin/bash
+event() {
+  jq -n --arg e "$1" --arg i "$who-$round" --arg p "$file" \
+    '{hook_event_name: $e, tool_name: "Edit", tool_use_id: $i, tool_input: {file_path: $p}}' | "$hook" || exit 1
+}
+hook=$1 file=$2 real=$3 who=$4
+for round in 1 2 3 4 5 6 7 8; do
+  event PreToolUse
+  before=$(<"$real")
+  sleep 0.003
+  printf '%s\n- %s-%s\n' "$before" "$who" "$round" >"$real.$who"
+  mv "$real.$who" "$real"
+  event PostToolUse
+done
+SESSION
+chmod +x "${tmp}/session"
+print -r -- '# index' > "${memory}/race.md"
+writers=()
+for who in a b; do "${tmp}/session" "${hooks}/lock-memory-writes.sh" "${memory}/race.md" "${memory}/race.md" "$who" & writers+=( $! ); done
+for who in c d; do "${tmp}/session" "${hooks}/lock-memory-writes.sh" "${linked}/race.md" "${memory}/race.md" "$who" & writers+=( $! ); done
+wait "${writers[@]}"
+check "no concurrent update is lost" same "$(grep -c '^- ' "${memory}/race.md")" 32
+check "the race leaves no lock" test ! -L "$lock"
+
+# Every session sees the same stale lock at once, so all of them try to take it over.
+print -r -- '# index' > "${memory}/takeover.md"
+for attempt in 1 2 3 4 5 6; do
+  ln -s "gone ${dead}" "$lock"
+  writers=()
+  for who in a${attempt} b${attempt} c${attempt} d${attempt}; do
+    "${tmp}/session" "${hooks}/lock-memory-writes.sh" "${memory}/takeover.md" "${memory}/takeover.md" "$who" & writers+=( $! )
+  done
+  wait "${writers[@]}"
+done
+check "a contended takeover loses no update" same "$(grep -c '^- ' "${memory}/takeover.md")" 192
+check "a takeover leaves nothing behind" test ! -L "$lock" -a ! -L "${lock}.takeover"
+
+ln -s "gone ${dead}" "$lock"
+ln -s "stale $$" "${lock}.takeover"
+sleep 120 &
+stuck=$!
+command rm -f "$lock"
+ln -s "stuck ${stuck}" "$lock"
+memory_hook PreToolUse Edit t12 "${memory}/MEMORY.md" 2>/dev/null
+check "a wedged takeover refuses the call" same "$?" 2
+check "a refused call clears the wedge" test ! -L "${lock}.takeover"
+kill "$stuck" 2>/dev/null
+command rm -f "$lock"
+
+mkdir -p "${tmp}/locked/.claude/agent-memory/x"
+print -r -- note > "${tmp}/locked/.claude/agent-memory/x/n.md"
+chmod 500 "${tmp}/locked/.claude/agent-memory/x"
+waited=$SECONDS
+check "an unwritable store is left alone" memory_hook PreToolUse Edit t13 "${tmp}/locked/.claude/agent-memory/x/n.md"
+check "an unwritable store does not spin" test $(( SECONDS - waited )) -lt 3
+chmod 700 "${tmp}/locked/.claude/agent-memory/x"
+kill "$live" 2>/dev/null
+
+# -------------------------------- No accounts ------------------------------ #
+
+solo="${tmp}/solo"
+mkdir -p "${solo}/.claude/hooks" "${solo}/.claude/projects/-app/memory"
+cp "${hooks}"/*.sh "${solo}/.claude/hooks/"
+print -r -- note > "${solo}/.claude/projects/-app/memory/MEMORY.md"
+jq -n --arg p "${solo}/.claude/projects/-app/memory/MEMORY.md" \
+  '{hook_event_name: "PreToolUse", tool_name: "Write", tool_use_id: "t", tool_input: {file_path: $p}}' > "${tmp}/write.json"
+check "without accounts Write is left alone" env HOME="$solo" "${solo}/.claude/hooks/lock-memory-writes.sh" < "${tmp}/write.json"
+check "without accounts no lock appears" test ! -L "${solo}/.claude/projects/-app/memory/.write-lock"
+
+registered() {
+  python3 -I -c '
+import sys
+text = open(sys.argv[1]).read()
+block = text[text.index(chr(34) + sys.argv[2] + chr(34) + ": ["):]
+sys.exit(sys.argv[3] not in block[:block.index("\n    ]")])' "$template" "$1" "$2"
+}
+for event in PreToolUse PostToolUse PostToolUseFailure; do
+  check "${event} runs the memory lock" registered "$event" lock-memory-writes.sh
+done
+
 print -r -- "${passed} passed, ${failed} failed"
 (( failed == 0 ))
