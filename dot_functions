@@ -1,26 +1,9 @@
 # ---------------------------- Shell & PATH Utils ---------------------------- #
 
-# Logger with a colored "<Level>:" prefix followed by an action-first message.
-# Convention:
-#   1. Every message starts with a verb, in one of four forms.
-#      a. Past tense for completed work (Imported / Skipped / Verified /
-#         Detected / Removed).
-#      b. "Failed to <verb>" for failures.
-#      c. Present participle plus a single … for work in progress
-#         (Installing… / Reading…).
-#      d. An imperative hint telling the user what to do next
-#         (Add tokens manually via 'secret:set' / Run 'brew bundle cleanup'
-#         to remove them).
-#      The … belongs to form (c) alone, so a past-tense message never
-#      carries one.
-#   2. The message body MUST NOT contain a formatting colon, since the only
-#      colon in the rendered line is the one in the "<Level>:" prefix. Put
-#      the detail in parentheses instead.
-#      ✓ "Success: Imported 12 secrets"
-#      ✗ "Success: Imported: 12 secrets"      (two colons)
-#      ✗ "Warning: Detected packages:"        (trailing list-colon)
-#   Colons inside data values (URLs, function names like `secret:rename`,
-#   port numbers like `:8080`) are fine, since those aren't formatting.
+# Messages start with a verb: past tense for finished work, "Failed to <verb>"
+# for failures, a participle plus … for work in progress, or an imperative hint.
+# The prefix holds the only formatting colon, so detail goes in parentheses.
+# Colons inside data values are fine.
 log() {
   local level="$1"; shift
   local red green yellow blue gray reset
@@ -40,13 +23,9 @@ log() {
   esac
 }
 
-# Redraw a single progress line on stderr, styled as an in-progress log message,
-# for work slow enough to look hung. It draws only on a terminal: run:daily
-# points stderr at a report file, where the carriage returns and erase codes
-# would land as garbage. The line is cut to the terminal width, because a
-# wrapped line breaks the carriage-return redraw. Call progress:clear before any
-# other output, or that output prints over the bar.
-# Usage: progress:bar <done> <total> <message> [detail]
+# This draws only on a terminal, because run:daily points stderr at a report
+# file. It cuts the line to the terminal width, since a wrapped line breaks the
+# redraw. Call progress:clear before any other output.
 progress:bar() {
   [[ -t 2 ]] || return 0
   local done="$1" total="$2" message="$3" detail="${4:-}"
@@ -60,14 +39,11 @@ progress:bar() {
   printf '\r\033[K\033[0;34mInfo:\033[0m    %s' "$body" >&2
 }
 
-# Erase the line progress:bar drew, so the next output starts on a clean line.
 progress:clear() {
   [[ -t 2 ]] && printf '\r\033[K' >&2
   return 0
 }
 
-# Retry a command up to N times with a delay between attempts (from bash-it)
-# Usage: retry <attempts> <delay_seconds> <command...>
 retry() {
   local attempts="$1" delay="$2"; shift 2
   local i
@@ -88,21 +64,13 @@ cmd:exists() {
   command -v "$1" &>/dev/null
 }
 
-# Internal: true when a binary, function, or builtin already owns this name.
-#
-# Deliberately narrower than cmd:exists, which also resolves aliases. The Oh My
-# Zsh bundle loads before .aliases, so `command -v` would report every plugin
-# alias as an existing command and .aliases would step aside for all of them.
-# The guards exist to stop a real command from being shadowed. Sitting on top
-# of a plugin alias is intended, because .aliases owns the names it sets.
-# Usage: alias:_taken <name>
+# This is narrower than cmd:exists, which also resolves aliases. The plugin
+# bundle loads before .aliases, so `command -v` would report every plugin alias
+# as taken, while .aliases owns the names it sets.
 alias:_taken() {
   (( ${+commands[$1]} + ${+functions[$1]} + ${+builtins[$1]} ))
 }
 
-# Define an alias only if no command with that name already exists.
-# Warns when skipped, so shadowed commands stay visible.
-# Usage: alias:safe <name>='<value>'
 alias:safe() {
   local name="${1%%=*}"
   if alias:_taken "$name"; then
@@ -112,17 +80,12 @@ alias:safe() {
   fi
 }
 
-# Silent counterpart to alias:safe, for polyfills where the absence
-# of the real command is what triggers the alias.
-# Usage: alias:fallback <name>='<value>'
+# A silent alias:safe for polyfills, where a missing command is expected
 alias:fallback() {
   alias:_taken "${1%%=*}" || alias:_set "$1"
 }
 
-# Internal: set an alias and warn if its target is unavailable.
-# Resolves the target the way zsh would at expansion time:
-#   (z) tokenize, (Q) dequote escapes, (e) expand parameters.
-# Usage: alias:_set <name>='<value>'
+# Resolves the target the way zsh would at expansion time
 alias:_set() {
   local -a parts=( ${(z)${1#*=}} )
   local target="${(eQ)parts[1]}"
@@ -131,11 +94,8 @@ alias:_set() {
   alias "$1"
 }
 
-# Drop suffix aliases whose target command is not installed. The common-aliases
-# plugin ships 35 of them for a Linux desktop (mplayer, acroread, xchm, djview,
-# xdvi, gv, unace, unrar), and the ones whose tool is missing here would fail on
-# first use. Resolves the target the same way alias:_set does.
-# Usage: alias:prune-suffix
+# The common-aliases plugin ships suffix aliases for Linux desktop tools, and
+# the ones whose tool is missing would fail on first use
 alias:prune-suffix() {
   local suffix target
   local -a parts
@@ -148,20 +108,13 @@ alias:prune-suffix() {
   done
 }
 
-# List every alias and function currently sitting on top of a real binary. The
-# plugin bundle has no equivalent of alias:safe, so this is how a plugin update
-# that claims a command name stays visible. Functions have to be covered too:
-# the aws plugin ships asr as a function rather than an alias, so it lands on
-# Apple Software Restore, and log() above sits on /usr/bin/log. Deliberate
-# shadows appear here as well, so read the output rather than acting on it.
+# The plugin bundle has no alias:safe, so this is how a plugin update that
+# claims a command name stays visible. Deliberate shadows such as log() appear
+# too.
 #
-# $commands reads the command hash table, which rehash refreshes so a package
-# installed earlier in this session still shows up. whence -p forks a subshell
-# per name instead, which across the 872 aliases loaded here costs four seconds
-# a call, and it answers from the filesystem, so on the case-insensitive boot
-# volume it reports /bin/lS for the lS alias, which is only ls under another
-# spelling.
-# Usage: alias:shadows
+# This reads $commands. whence -p forks once per name, which takes seconds
+# across every alias, and it answers from the filesystem, so the
+# case-insensitive volume reports /bin/lS for the lS alias.
 alias:shadows() {
   local name
   rehash
@@ -169,45 +122,29 @@ alias:shadows() {
     [[ -n "${commands[$name]}" ]] \
       && printf '%-14s %-44s %s\n' "$name" "${aliases[$name]}" "${commands[$name]}"
   done
-  # Names starting with _ are completion functions and plugin internals. Nobody
-  # types them, so a binary behind one of them is not a shadow.
+  # Nobody types _ names, which are completion functions and plugin internals
   for name in ${(ko)functions}; do
     [[ "$name" == _* || -z "${commands[$name]}" ]] && continue
     printf '%-14s %-44s %s\n' "$name" '(function)' "${commands[$name]}"
   done
 }
 
-# Run a command at most once every 24 hours, detached, and show what the last
-# run had to say. Usage: run:daily <name> <command...>
-#
-# The three callers in .zshrc (mise:update, brew:check, plugins:update) all
-# reach the network, and brew:check alone measured about 4.7 s. Running them in
-# front of the prompt made the first shell of each day an order of magnitude
-# slower than every other one, and slower still offline, where each command
-# sits in its own timeout first.
-#
-# So the work is detached and its output is kept for the next shell to print.
-# One shell late is fine for a daily "3 packages are outdated" notice, and it
-# beats both blocking the prompt and writing into a prompt already on screen.
+# The job runs detached because every caller reaches the network. In front of
+# the prompt that makes the day's first shell far slower, and slower still
+# offline. The next shell prints the output.
 run:daily() {
   local name="$1"; shift
   local stamp="${HOME}/.cache/daily/${name}"
   local report="${stamp}.report"
 
-  # Whatever the last detached run printed, shown once. The run writes this
-  # file only when it finishes, so there is no half-written report to catch.
-  # Only a terminal gets it. Shells without one (an editor capturing the login
-  # environment, Claude Code's shell snapshot) would swallow it, and the report
-  # is the only place a timeout or a failed update ever shows up.
+  # Shells with no terminal, such as an editor capturing the login environment
+  # or Claude Code's shell snapshot, would lose the only record of a failed
+  # update
   [[ -t 1 && -s "$report" ]] && { cat "$report"; command rm -f "$report" }
 
-  # A run still alive well past its timeout means the watchdog failed as well,
-  # the way the old background job stopped together with its watchdog. Say so
-  # in every terminal shell until it is gone, rather than letting it spin
-  # unnoticed for days. A pid file left by a run that died without cleaning up
-  # (reboot, SIGKILL) is removed, and so is one whose pid now belongs to some
-  # other process. The age test is a glob qualifier, so this costs no fork
-  # unless a pid file is overdue.
+  # A run alive past its timeout means its watchdog failed too, so this warns in
+  # every terminal. It removes a stale pid file (reboot, SIGKILL, reused pid).
+  # The glob qualifier avoids a fork unless a pid file is overdue.
   local pidfile="${stamp}.pid"
   local -i limit=$(( ${RUN_DAILY_TIMEOUT:-300} / 60 + 2 ))
   local -a overdue=( ${pidfile}(N.mm+${limit}) )
@@ -221,42 +158,25 @@ run:daily() {
     fi
   fi
 
-  # `mh-24` also matches a stamp dated in the future (clock skew, restored
-  # backup), which would gate the command off forever, so exclude that case
-  # with `^ms-0`. Not `ms+0`, which demands an age of at least a second and so
-  # rejects a stamp written in this very second, reopening the burst that the
-  # stamp-before-launch rule below exists to close.
+  # `^ms-0` excludes a stamp dated in the future, which `mh-24` alone would
+  # match forever. `ms+0` would also reject a stamp written this second.
   local -a fresh=( ${stamp}(N.mh-24^ms-0) )
   (( ${#fresh} )) && return 0
 
   mkdir -p "${stamp:h}"
-  # Stamp before launching rather than on success. Every caller already returns
-  # 0 unconditionally so the day gets stamped either way, and stamping first
-  # keeps most of a burst of new tabs from each starting its own copy of the
-  # same update against the same clones. Tabs that start within a few
-  # milliseconds of each other still pass the check together, and the lock in
-  # _run:daily turns all but one of those copies away.
+  # Stamp before launching, so a burst of new tabs does not start one copy each.
+  # The lock in _run:daily stops tabs that still pass the check together.
   touch "$stamp"
 
-  # Detach into a new session, not just into the background. A job forked with
-  # `&!` from an interactive shell stays a process group on this terminal, and
-  # the terminal stops that whole group (SIGTTOU, SIGTTIN) as soon as anything
-  # in it changes the tty settings or reads from the tty. antidote 2.3.0 does
-  # the first on every run: its `read -rd ''` from a heredoc makes zsh switch
-  # the terminal out of canonical mode. The group stops, the watchdog's sleep
-  # with it, and the `$(...)` subshell, which zsh exempts from those signals,
-  # busy-loops on its stopped child at 100% CPU until killed (a macOS /bin/zsh
-  # 5.9 bug, fixed in 5.9.2), even after the tab closes. Seen for 18 h in
-  # September, 6 days from October 28 and 41 h from November 1.
+  # This starts a new session, not a background job. A `&!` job stays a process
+  # group on this terminal, and the terminal stops the group (SIGTTOU, SIGTTIN)
+  # when anything in it touches the tty, as antidote 2.3.0 does on every run.
+  # The `$(...)` subshell then busy-loops on its stopped child at 100% CPU until
+  # killed, a macOS /bin/zsh 5.9 bug fixed in 5.9.2. macOS has no setsid(1), so
+  # perl calls setsid(2).
   #
-  # A new session has no controlling terminal, so nothing in the job can reach
-  # this one: /dev/tty fails with ENXIO, a prompt fails instead of waiting, and
-  # closing the tab no longer hangs up a half-done update. macOS has no
-  # setsid(1), so perl forks and calls setsid(2), and a fresh zsh reloads these
-  # functions. `-f` keeps every other startup file out (the environment is
-  # inherited), and nice keeps the priority that BG_NICE used to give the job.
-  # The warning goes into the report, because startup stderr is not always on
-  # screen (the GitKraken ZDOTDIR shim in Zed terminals discards it).
+  # The warning goes in the report because the GitKraken ZDOTDIR shim in Zed
+  # terminals discards startup stderr.
   [[ -x /usr/bin/perl ]] || {
     log warning "Skipped ${name} (/usr/bin/perl is missing, so it cannot run detached)" 2>>"$report"
     return 0
@@ -267,38 +187,24 @@ run:daily() {
     run:daily "$name" "$report" "${RUN_DAILY_TIMEOUT:-300}" "$@" </dev/null >/dev/null 2>&1
 }
 
-# The detached half of run:daily. Runs the job under a watchdog and publishes
-# its report. Usage: _run:daily <name> <report> <timeout> <command...>
-#
-# Bound the run. Every caller reaches the network and two drive a third-party
-# tool, so a wedged update is a question of when, not if, and nothing in front
-# of the prompt reveals it. timeout(1) is no use here because the callers are
-# functions, not binaries, so watchdog the forked job. TERM first, since
-# antidote traps it to remove its tmpdir.
-#
-# The job is only a wrapper. Every caller runs its slow command inside $(...),
-# and antidote forks a git worker per bundle below that, so the process that
-# actually wedges sits one to three levels down. Signalling the job alone
-# orphans it to keep spinning under launchd. Collect the tree before
-# signalling, because killing a parent reparents its children beyond the reach
-# of pgrep, and signal the job last, because the waiting parent kills this
-# watchdog as soon as the job dies.
+# timeout(1) cannot run the callers, which are functions, so a watchdog limits
+# the job. The process that hangs sits one to three levels below the job. The
+# watchdog collects the process tree first, because killing a parent puts its
+# children beyond pgrep. It signals the job last, because the parent kills the
+# watchdog when the job dies. TERM comes first because antidote traps it to
+# remove its tmpdir.
 _run:daily() {
   local name="$1" report="$2" timeout="$3"; shift 3
   local job watchdog lockfd
 
-  # One run of each job at a time. A second copy would race the first on the
-  # same clones (git index.lock errors) and both would write into the same
-  # report.new, so whichever copy loses the lock leaves. The lock is released
-  # when this shell exits, even on SIGKILL, so it can never go stale. Without
-  # zsh/system the job runs unlocked rather than not at all.
+  # A second copy would race this one on the same clones and report.new. The
+  # lock ends with this shell, even on SIGKILL.
   if zmodload -F zsh/system b:zsystem 2>/dev/null; then
     : >>"${report}.lock"
     zsystem flock -t 0 -f lockfd "${report}.lock" 2>/dev/null || return 0
   fi
 
-  # For the overdue check in run:daily. $$ leads this session's process group,
-  # so `kill -- -$$` stops everything the run started.
+  # $$ leads this session's process group, so `kill -- -$$` stops the whole run
   local pidfile="${report%.report}.pid"
   print -r -- $$ >| "$pidfile"
 
@@ -307,15 +213,10 @@ _run:daily() {
   ( sleep "$timeout"
     local -a tree=( $job ) level=( $job )
     while level=( ${(f)"$(pgrep -P ${(j:,:)level} 2>/dev/null)"} ); do tree=( $level $tree ); done
-    # Into the report, because nothing else sees this detached run. With
-    # nothing recorded, a command that times out every day looks exactly like
-    # one that had nothing to say, which is the invisibility this watchdog
-    # exists to end.
+    # Without this line a daily timeout looks like a run with no output
     log warning "Timed out ${name} after ${timeout}s (killed it, run it by hand to see why)" 2>>"${report}.new"
-    # Detached, because the parent kills this watchdog the moment the job dies,
-    # which is the same instant the TERM below lands. Left inline, the
-    # escalation never runs and a descendant that ignores TERM keeps spinning,
-    # which is the hang this watchdog exists to end.
+    # This runs detached because the parent kills the watchdog as soon as TERM
+    # arrives, and a descendant that ignores TERM would keep running
     ( sleep 5; kill -KILL $tree 2>/dev/null ) &!
     kill -TERM $tree 2>/dev/null ) & watchdog=$!
   wait $job
@@ -324,12 +225,9 @@ _run:daily() {
   command rm -f "$pidfile"
 }
 
-# Prepend directories to PATH, skipping the ones that do not exist.
-#
-# A directory already on PATH is prepended again rather than left alone.
-# Something earlier in startup may have appended it, and skipping would leave
-# the entry behind /usr/bin instead of in front of it. `typeset -gU PATH path`
-# in .zshenv drops the older copy, so the entry moves rather than repeating.
+# This prepends a directory already on PATH again, or an earlier append would
+# leave it behind /usr/bin. `typeset -gU PATH path` in .zshenv drops the older
+# copy.
 path:add() {
   local dir
   for dir in "$@"; do
@@ -337,7 +235,6 @@ path:add() {
   done
 }
 
-# Append directories to PATH (skips missing or duplicate entries)
 path:append() {
   local dir
   for dir in "$@"; do
@@ -348,64 +245,43 @@ path:append() {
   done
 }
 
-# Create a new directory and enter it
 mkd() {
   mkdir -p "$@" && cd "${@[-1]}" || return
 }
 
-# Change to the directory of the frontmost Finder window
 cdf() {
   local dir
-  # osascript reports its failure on stderr and prints nothing on stdout, and
-  # `cd ""` is a no-op that still returns 0, so the guard has to sit on the
-  # command substitution instead of on cd.
+  # `cd ""` succeeds, so this has to catch a failed osascript
   dir="$(osascript -e 'tell app "Finder" to POSIX path of (insertion location as alias)')" || return
   cd "$dir"
 }
 
 # -------------------------------- Zsh Plugins ------------------------------- #
 
-# Conditional guards for the Oh My Zsh bundle. antidote calls the function named
-# in a `conditional:` annotation with no arguments and wraps that entry in a
-# plain `if <name>; then ... fi`, so the tool a plugin needs has to be encoded
-# in the guard's own name. Each plugin listed here targets a tool that is not
-# installed yet, so its entry costs one test per shell until the tool arrives.
+# antidote calls a `conditional:` function with no arguments, so the tool a
+# plugin needs has to be in the guard's name
 local _tool
 for _tool in mongocli multipass pre-commit sbt terraform; do
   functions[have:${_tool}]="cmd:exists ${_tool}"
 done
 unset _tool
 
-# Rails needs its own guard rather than a bare cmd:exists. macOS ships
-# /usr/bin/rails, a stub whose only job is to print "Rails is not currently
-# installed", so the plain test always succeeds and the plugin would load its 73
-# aliases on a machine with no Rails.
+# macOS ships a /usr/bin/rails stub, so cmd:exists always succeeds
 have:rails() {
   local bin
   bin="$(whence -p rails)" || return 1
   [[ "$bin" != "/usr/bin/rails" ]]
 }
 
-# fzf's setup is pure ZLE. It evaluates `fzf --zsh`, which saves the shell
-# options and restores them afterwards. A shell with no terminal has no ZLE to
-# restore, so `zsh -ic` prints "can't change option: zle" twice. Such a shell
-# has no use for key bindings anyway. The tool test is the second half: the
-# plugin probes eight fixed directories and then prints a setup error telling
-# the reader to set FZF_BASE, which is what a machine whose Brewfile omits fzf
-# sees on every prompt. Both tests have to pass.
+# With no terminal there is no ZLE, so `fzf --zsh` prints "can't change option:
+# zle". Without fzf the plugin prints a setup error on every prompt.
 have:fzf() {
   [[ -t 0 ]] || return 1
   cmd:exists fzf
 }
 
-# Update the cloned plugin repositories, then rebuild the bundle from them.
-#
-# Nothing else does this. antidote clones a plugin once and never revisits it,
-# so the Oh My Zsh checkout would otherwise stay at whatever commit it had on
-# the day it was cloned. Runs from run:daily in .zshrc, on the same 24-hour
-# stamp as mise:update and brew:check. The four Homebrew plugins in .completions
-# are unaffected, because `brew upgrade` already covers those.
-# Usage: plugins:update
+# antidote never revisits a clone, so nothing else moves the plugins off their
+# first commit
 plugins:update() {
   local antidote="${HOMEBREW_PREFIX}/opt/antidote/share/antidote/antidote.zsh"
   local bundle="${HOME}/.cache/zsh/plugins.zsh"
@@ -417,15 +293,11 @@ plugins:update() {
   if ! output=$(antidote update 2>&1 </dev/null); then
     log warning "Failed to update zsh plugins"
     print -r -- "$output" >&2
-    # Return 0 so run:daily still stamps the day, matching mise:update. An
-    # offline laptop retries tomorrow rather than on every new shell.
     return 0
   fi
 
-  # Recompile against the updated clones. Rebuilt in place rather than deleted,
-  # because if antidote could not regenerate it, deleting would leave the next
-  # shell with no plugins, while an older bundle still works. This shell has
-  # already sourced the old file, so the new one takes effect next time.
+  # Write beside the old bundle, because a failed rebuild must leave a working
+  # one
   if ! output=$(antidote bundle < "${HOME}/.plugins" 2>&1 >| "${bundle}.new"); then
     log warning "Failed to rebuild the plugin bundle (keeping the current one)"
     print -r -- "$output" >&2
@@ -438,19 +310,8 @@ plugins:update() {
   return 0
 }
 
-# Load the Oh My Zsh bundle listed in ~/.plugins.
-#
-# antidote compiles that list into one flat file under ~/.cache/zsh. antidote
-# itself is sourced only when the list is newer than the compiled file, so a
-# normal startup reads a single script and does no plugin resolution. Deleting
-# the compiled file forces a rebuild.
-#
-# Called from .zshrc before .aliases, which is the authority on every name it
-# also defines. Sourcing the bundle inside a function is deliberate and safe:
-# aliases, functions and `typeset -g` values all survive it, and the only value
-# that stops reaching the shell is the git plugin's `git_version` scratch
-# variable.
-# Usage: plugins:load
+# Sourcing the bundle inside a function is safe. Only the git plugin's
+# `git_version` scratch variable stops reaching the shell.
 plugins:load() {
   local list="${HOME}/.plugins"
   local bundle="${HOME}/.cache/zsh/plugins.zsh"
@@ -458,28 +319,22 @@ plugins:load() {
 
   [[ -f "$list" ]] || return 0
 
-  # The docker, kubectl, helm, uv and gh plugins write generated completions
-  # here on first use, so it has to exist and sit on fpath before they load.
-  # .completions rebuilds fpath afterwards but keeps this entry.
+  # Plugins write generated completions here on first use, so this directory has
+  # to be on fpath before they load
   export ZSH_CACHE_DIR="${HOME}/.cache/oh-my-zsh"
   [[ -d "${ZSH_CACHE_DIR}/completions" ]] || mkdir -p "${ZSH_CACHE_DIR}/completions"
   fpath=("${ZSH_CACHE_DIR}/completions" $fpath)
 
-  # zsh's completion cache, which several plugins reach for at load time via
-  # _retrieve_cache/_store_cache. It is off by default, and without it the
-  # composer plugin re-runs `composer global config bin-dir` on every shell to
-  # find its vendor path, measured at 236 ms against 6 ms once the cache
-  # answers. It has to be set here rather than in .completions, because the
-  # plugins ask for it while this function is still running.
+  # Plugins read the cache as they load, so this cannot wait for .completions.
+  # Without the cache the composer plugin spends about 230 ms per shell finding
+  # its vendor path.
   zstyle ':completion:*' use-cache on
   zstyle ':completion:*' cache-path "${ZSH_CACHE_DIR}/zcompcache"
 
-  # Several plugins call compdef as they load, to give their aliases the
-  # completion of the command behind them. compinit does not run until
-  # .completions, which has to stay last because zsh-syntax-highlighting only
-  # wraps widgets that already exist. Queue those calls and let .completions
-  # replay them. Running compinit early instead does not work, because a second
-  # compinit discards everything registered against the first.
+  # Plugins call compdef as they load, but compinit has to wait for
+  # .completions, because zsh-syntax-highlighting only wraps widgets that
+  # already exist. A second compinit would discard the first, so the calls queue
+  # for .completions to replay.
   typeset -ga COMPDEF_DEFERRED=()
   (( ${+functions[compdef]} )) || \
     compdef() { COMPDEF_DEFERRED+=( "${(j: :)${(q)@}}" ) }
@@ -487,9 +342,8 @@ plugins:load() {
   if [[ ! "$bundle" -nt "$list" && -f "$antidote" ]]; then
     [[ -d "${bundle:h}" ]] || mkdir -p "${bundle:h}"
     source "$antidote"
-    # Write then move, as plugins:update does. `>|` truncates the bundle before
-    # antidote runs, so a failed rebuild would leave an empty file that the next
-    # line sources and whose mtime then defeats the check above for good.
+    # `>|` truncates first, so a failed rebuild would leave an empty bundle that
+    # is newer than the list
     if antidote bundle < "$list" >| "${bundle}.new"; then
       command mv -f "${bundle}.new" "$bundle"
     else
@@ -497,15 +351,10 @@ plugins:load() {
     fi
   fi
 
-  # Job control off while the bundle loads. Nine plugins (codex, docker,
-  # flutter, gh, helm, kubectl, ngrok, uv twice) regenerate completions in a
-  # `&|` job on every shell, the same shape that run:daily used to fork. With
-  # job control on, each job is a background process group on the terminal, and
-  # one generator that touches the tty would stop it and leave its `=(...)`
-  # waiter spinning at 100% CPU (see run:daily). With it off, the jobs stay in
-  # the shell's foreground group and read /dev/null, so the terminal cannot stop
-  # them. Only MONITOR is restored, not local_options, which would also undo the
-  # options the plugins set.
+  # Plugins regenerate completions in `&|` jobs on every shell. With job control
+  # on, each is a background group the terminal can stop, leaving its `=(...)`
+  # waiter spinning at 100% CPU (see run:daily). Only MONITOR is restored,
+  # because local_options would also undo the options the plugins set.
   local monitor=$options[monitor]
   unsetopt monitor
   [[ -f "$bundle" ]] && source "$bundle"
@@ -515,8 +364,6 @@ plugins:load() {
 
 # ----------------------------- Files & Archives ----------------------------- #
 
-# Create a .tar.gz archive (zopfli for small inputs, otherwise pigz or gzip)
-# Usage: targz <path...>
 targz() {
   local tmpFile="${1%/}.tar"
   tar -cvf "${tmpFile}" --exclude=".DS_Store" "${@}" || return 1
@@ -534,8 +381,6 @@ targz() {
   fi
 
   log info "Compressing .tar ($((size / 1000)) kB) using \`${cmd}\`…"
-  # Drop the intermediate if compression fails, so a write error does not
-  # strand a full-size uncompressed copy next to the source.
   "${cmd}" -v "${tmpFile}" || { command rm -f "${tmpFile}"; return 1; }
   [[ -f "${tmpFile}" ]] && command rm -f "${tmpFile}"
 
@@ -545,7 +390,6 @@ targz() {
   log success "Created ${tmpFile}.gz ($((zippedSize / 1000)) kB)"
 }
 
-# Show the size of a file, or the total size of a directory
 fs() {
   if (( $# )); then
     du -sh -- "$@"
@@ -554,8 +398,6 @@ fs() {
   fi
 }
 
-# Create a base64 data URL from a file
-# Usage: dataurl <file>
 dataurl() {
   [[ -f "${1:-}" ]] || { log error "Failed to encode (needs an existing file, run 'dataurl <file>')"; return 1; }
   local mimeType
@@ -566,16 +408,12 @@ dataurl() {
   echo "data:${mimeType};base64,$(openssl base64 -in "$1" | tr -d '\n')"
 }
 
-# Serve the current directory over HTTP and open it once it answers
-# Usage: server [port]
 server() {
   local port="${1:-8000}"
   { retry 5 1 curl -fs "http://localhost:${port}/" -o /dev/null && open "http://localhost:${port}/"; } &
   python3 -m http.server "${port}"
 }
 
-# Compare the original and gzipped size of a file
-# Usage: gz <file>
 gz() {
   [[ -f "${1:-}" ]] || { log error "Failed to compare (needs an existing file, run 'gz <file>')"; return 1; }
   local origsize
@@ -589,33 +427,26 @@ gz() {
   printf "gzip: %d bytes (%2.2f%%)\n" "$gzipsize" "$ratio"
 }
 
-# Colored tree view, skipping TREE_IGNORE paths, paged through less
 trec() {
   tree -aC -I "${TREE_IGNORE}" --dirsfirst "$@" | less -FRNX
 }
 
-# Same tree view as trec, without color or paging
 tre() {
   tree -a -I "${TREE_IGNORE}" --dirsfirst "$@"
 }
 
 # ------------------------------ Open & Launch ------------------------------- #
 
-# Open the current directory in Finder, or a given path in its default app
 o() {
   open "${@:-.}"
 }
 
 # -------------------------- Networking, TLS & DNS --------------------------- #
 
-# Run `dig` and show only the answer section
-# Usage: digga <domain>
 digga() {
   dig +nocmd "$1" any +multiline +noall +answer
 }
 
-# Show every name (common name and SANs) in a domain's TLS certificate
-# Usage: getcertnames <domain>
 getcertnames() {
   if [[ -z "${1}" ]]; then
     log error "Failed to read certificate names (no domain given)"
@@ -649,8 +480,6 @@ getcertnames() {
   fi
 }
 
-# Point a network service at a specific set of DNS servers.
-# Usage: dns:change <network_service> <comma_separated_dns_ips>
 dns:change() {
   if (($# < 2)); then
     echo "Usage: dns:change <network_service> <comma_separated_dns_ips>" >&2
@@ -658,8 +487,7 @@ dns:change() {
   fi
 
   local network_service="$1"
-  # networksetup takes each address verbatim, so " 8.8.8.8" out of a spaced
-  # list is rejected as an invalid parameter. Trim the fields and drop empties.
+  # networksetup rejects " 8.8.8.8" from a spaced list
   local -a fields nameservers
   IFS=',' read -rA fields <<<"$2"
   local ns
@@ -674,11 +502,9 @@ dns:change() {
 
 # ------------------------------------ SSH ----------------------------------- #
 
-# Adopt a forwarded ssh-agent socket left behind in /tmp by an earlier session.
 ssh:reagent() {
   local agent
-  # (N) matters: without it an unmatched glob is fatal under NOMATCH, and the
-  # error unwinds out of ssh:agent and aborts the rest of .zshrc.
+  # Without (N) an unmatched glob is fatal and aborts the rest of .zshrc
   for agent in /tmp/ssh-*/agent.*(N=); do
     export SSH_AUTH_SOCK="${agent}"
     if ssh-add -l &>/dev/null; then
@@ -687,23 +513,14 @@ ssh:reagent() {
       return 0
     fi
   done
-  # Every candidate failed, so drop the last one rather than leaving
-  # SSH_AUTH_SOCK aimed at a dead socket.
   unset SSH_AUTH_SOCK
   log warning "Found no working SSH agent (reconnect with forwarding)"
   return 1
 }
 
-# Point SSH_AUTH_SOCK at a working agent, starting a fresh one if needed.
-#
-# Test the inherited socket first, because ssh:reagent's /tmp glob only ever
-# matches a socket that sshd created for a forwarded agent. launchd's agent
-# lives under /var/run and a locally started one lands where ssh-agent(1)
-# FILES says, so on macOS that glob never matches. Deciding with `pgrep`
-# instead found the launchd agent, ssh:reagent then unset a working
-# SSH_AUTH_SOCK, and every call forked another agent that nothing reaps.
-# `ssh-add -l` exits 2 only when it cannot reach an agent at all, and 1 for
-# one that answers but holds no keys.
+# Test the inherited socket first, because ssh:reagent's glob only matches
+# sockets sshd created for a forwarded agent, never launchd's. `ssh-add -l`
+# exits 2 only when it cannot reach an agent, and 1 for one holding no keys.
 ssh:agent() {
   ssh-add -l &>/dev/null
   (( $? == 2 )) || return 0
@@ -711,61 +528,30 @@ ssh:agent() {
 }
 
 # --------------------------------- Secrets ---------------------------------- #
-#
-# A dedicated `dotfiles` keychain (separate from `login`) is the source of truth
-# for every managed secret. The tokens file on iCloud Drive
-# (`$SECRETS_TOKENS_FILE`) mirrors it as a tab-separated backup, so a fresh
-# machine can re-import everything in one shot.
-# Tokens-file format: id<TAB>account<TAB>where<TAB>kind<TAB>comment<TAB>password
-#
-# Every read of that format below uses IFS=$'\t\t', and the doubled tab is
-# load-bearing. zsh treats an IFS whitespace character that appears twice as a
-# plain separator (zshparam(1), IFS), so runs of tabs stop collapsing and empty
-# where, kind, and comment fields survive the read. A single $'\t' would shift
-# every field after an empty one.
-#
-# Five metadata fields map to native macOS keychain attributes (the password is
-# the stored value, not an attribute):
-#   id      = friendly name, populates the Label (-l), and is the lookup key
-#             when SECRETS_KEYCHAIN_LOOKUP_FIELD is "name" (the default)
-#   account = identity (-a)
-#   where   = provider URL, populates the Service (-s). macOS enforces
-#             (Service, Account) uniqueness at the storage layer
-#   kind    = secret type, populates the "desc" attribute (-D)
-#   comment = what reads this secret, populates "icmt" (-j)
-#
-# Every entry is created with `-A` so chezmoi templates can read it at apply
-# time without a per-app keychain confirmation prompt.
-#
-# Naming: secret:* acts on a single entry, secrets:* acts on the whole set
-# (list, import, export).
-#
-# ---------------------------------------------------------------------------- #
 
+# Every read of the tokens file uses IFS=$'\t\t'. zsh treats a doubled IFS
+# whitespace character as a plain separator (zshparam(1)), so empty fields
+# survive the read instead of shifting the ones after them.
 _SECRETS_TOKENS_FILE="${SECRETS_TOKENS_FILE}"
 _SECRETS_KEYCHAIN="$HOME/Library/Keychains/${SECRETS_KEYCHAIN_NAME:-dotfiles}.keychain-db"
 
-# Map the configured lookup field to the matching `security` flag.
 typeset -gA _SECRETS_FLAG_MAP=(name -l where -s kind -D comment -j)
 _SECRETS_LOOKUP_FLAG="${_SECRETS_FLAG_MAP[${SECRETS_KEYCHAIN_LOOKUP_FIELD:-name}]:--l}"
 
-# Create the managed keychain if it is missing, and add it to the user search
-# list. An empty SECRETS_KEYCHAIN_PASSWORD makes the keychain inherit the login
-# session unlock state, so nothing extra is prompted for during use. A non-empty
-# value sets a master password that has to be entered to unlock.
+# An empty SECRETS_KEYCHAIN_PASSWORD inherits the login session's unlock state,
+# and a non-empty one is a master password
 _secrets:ensure-keychain() {
   if [[ ! -f "$_SECRETS_KEYCHAIN" ]]; then
     local pw="${SECRETS_KEYCHAIN_PASSWORD:-}"
     security create-keychain -p "$pw" "${_SECRETS_KEYCHAIN%-db}" >/dev/null
-    # Lock on system sleep, no idle timeout, see run_before_00-unlock-keychain.
+    # Lock on sleep with no idle timeout
     security set-keychain-settings -l "$_SECRETS_KEYCHAIN"
     security unlock-keychain -p "$pw" "$_SECRETS_KEYCHAIN"
   fi
   if ! security list-keychains -d user 2>/dev/null | grep -qF -- "$_SECRETS_KEYCHAIN"; then
-    # Split the list with zsh, not xargs: xargs re-parses the quotes `security`
-    # prints, so a path holding a space is torn into two nonexistent entries,
-    # and one holding an apostrophe aborts the read, which leaves `-s` setting
-    # the search list to the dotfiles keychain alone, without login.keychain.
+    # xargs would re-parse the quotes `security` prints. An apostrophe in a path
+    # aborts the read and leaves `-s` setting a search list without
+    # login.keychain.
     local -a paths=( ${${${(@f)"$(security list-keychains -d user)"}#*\"}%\"} )
     security list-keychains -d user -s "$_SECRETS_KEYCHAIN" "${paths[@]}"
   fi
@@ -775,20 +561,15 @@ _secrets:write-header() {
   printf '# id\taccount\twhere\tkind\tcomment\tpassword\n# Managed by secrets:export. Run secrets:import on a new machine to load them into the keychain\n' > "$1"
 }
 
-# Ensure the tokens file exists with a header and user-only permissions.
-# Idempotent, so re-running fixes either problem without touching the content.
 _secrets:ensure-tokens-file() {
   [[ -d "${_SECRETS_TOKENS_FILE:h}" ]] || mkdir -p "${_SECRETS_TOKENS_FILE:h}"
   [[ -f "$_SECRETS_TOKENS_FILE" ]] || _secrets:write-header "$_SECRETS_TOKENS_FILE"
   chmod 600 "$_SECRETS_TOKENS_FILE"
 }
 
-# Stream "id<TAB>account<TAB>where<TAB>kind<TAB>comment" for every generic
-# password entry in the keychain (the source of truth), sorted by id. Reads
-# metadata from `security dump-keychain`, which never emits password data.
-# Missing attributes render empty. dump-keychain hex-encodes any value holding
-# non-ASCII bytes, which awk decodes back (LC_ALL=C keeps sprintf("%c")
-# byte-oriented).
+# dump-keychain never emits password data. It hex-encodes values holding
+# non-ASCII bytes, and LC_ALL=C keeps sprintf("%c") byte-oriented while awk
+# decodes them.
 _secrets:entries() {
   [[ -f "$_SECRETS_KEYCHAIN" ]] || return 0
   security dump-keychain "$_SECRETS_KEYCHAIN" 2>/dev/null | LC_ALL=C awk '
@@ -800,14 +581,14 @@ _secrets:entries() {
       return out
     }
     function val(line) {
-      if (line ~ /<blob>="/) {                   # printable value, quoted
+      if (line ~ /<blob>="/) {
         sub(/^[^=]*="/, "", line); sub(/"$/, "", line); return line
       }
-      if (line ~ /<blob>=0x/) {                  # non-ASCII value, hex-encoded
+      if (line ~ /<blob>=0x/) {
         sub(/^[^=]*=0x/, "", line); sub(/[[:space:]].*$/, "", line)
         return hexdec(line)
       }
-      return ""                                  # <NULL>
+      return ""
     }
     function flush() {
       if (cls == "\"genp\"" && (id != "" || acct != ""))
@@ -815,7 +596,7 @@ _secrets:entries() {
     }
     /^keychain:/            { flush(); cls = id = acct = where = kind = comment = "" }
     /^class:/               { cls = $2 }
-    /^ *0x00000007 <blob>=/ { id      = val($0) }   # 0x00000007 = Label (-l)
+    /^ *0x00000007 <blob>=/ { id      = val($0) }   # Label (-l)
     /^ *"acct"<blob>=/      { acct    = val($0) }
     /^ *"svce"<blob>=/      { where   = val($0) }
     /^ *"desc"<blob>=/      { kind    = val($0) }
@@ -824,13 +605,8 @@ _secrets:entries() {
   ' | LC_ALL=C sort -f
 }
 
-# Read the Where, Kind, and Comments attributes of a managed secret. Emits one
-# tab-separated line "<where>\t<kind>\t<comment>". Missing fields render empty.
-# Exits non-zero if the entry is absent. Reuses the _secrets:entries parser,
-# which is the only one that also decodes the hex form `security` prints for
-# any value holding non-ASCII bytes. Matches on the configured lookup field, so
-# it stays in step with _secrets:password rather than always keying on the Label.
-# Usage: _secrets:attrs <id> <account>
+# This uses _secrets:entries, the only parser that decodes hex values, and
+# matches the lookup field so it agrees with _secrets:password
 _secrets:attrs() {
   local id acct where kind comment key
   while IFS=$'\t\t' read -r id acct where kind comment; do
@@ -847,31 +623,22 @@ _secrets:attrs() {
   return 1
 }
 
-# Print the password of a managed secret. Prints nothing and exits non-zero
-# when the entry is missing.
-# Usage: _secrets:password <id> <account>
 _secrets:password() {
   security find-generic-password "$_SECRETS_LOOKUP_FLAG" "$1" -a "$2" -w "$_SECRETS_KEYCHAIN" 2>/dev/null
 }
 
-# True when an entry already occupies a (Service, Account) pair. macOS keys
-# generic passwords by that pair, not by the Label this setup uses as the id,
-# so `add-generic-password -U` replaces whatever entry already holds it.
-# Usage: _secrets:storage-taken <where> <account>
+# macOS keys generic passwords by (Service, Account), not by the Label used as
+# the id, so `add-generic-password -U` replaces whatever entry holds the pair
 _secrets:storage-taken() {
   security find-generic-password -s "$1" -a "$2" "$_SECRETS_KEYCHAIN" >/dev/null 2>&1
 }
 
-# Write a secret to the dotfiles keychain, adding it or updating it in place.
-# Usage: _secrets:install <id> <account> <where> <kind> <password> [comment]
 _secrets:install() {
   local id="$1" acct="$2" where="$3" kind="$4" password="$5" comment="${6:-}"
   _secrets:ensure-keychain
-  # `security -i` takes the command on stdin, so the secret never reaches the
-  # process table, which security's own usage text calls insecure for -w. Its
-  # interactive parser reads the line itself, so every value is double quoted
-  # with backslashes escaped first and then double quotes, exactly as the
-  # keychain unlock script escapes the master password.
+  # `security -i` keeps the secret out of the process table. Its parser reads
+  # the line itself, so this double quotes each value and escapes backslashes
+  # first.
   local -a args=(-U -A -s "$where" -a "$acct" -l "$id" -D "$kind" -w "$password" "$_SECRETS_KEYCHAIN")
   [[ -n "$comment" ]] && args=( -j "$comment" "${args[@]}" )
   local line="add-generic-password" arg escaped
@@ -885,13 +652,7 @@ _secrets:install() {
   fi
 }
 
-# Add a secret to the dotfiles keychain, then sync to iCloud Drive. The password
-# is read interactively, so it is never echoed or stored in shell history.
-# Refuses to create a duplicate (id, account) pair, which macOS does not enforce
-# itself, and refuses a (where, account) pair another entry already owns, since
-# `add-generic-password -U` matches on that pair and would overwrite the entry
-# holding it, password included.
-# Usage: secret:set <id> <account> <where> <kind> [comment]
+# macOS does not enforce a unique (id, account) pair, so this checks it
 secret:set() {
   (( $# >= 4 && $# <= 5 )) || { echo "Usage: secret:set <id> <account> <where> <kind> [comment]" >&2; return 1; }
   local id="$1" account="$2" where="$3" kind="$4" comment="${5:-}" password
@@ -916,17 +677,11 @@ secret:set() {
   secrets:export
 }
 
-# Read a secret from the dotfiles keychain.
-# Usage: secret:get <id> <account>
 secret:get() {
   (( $# == 2 )) || { echo "Usage: secret:get <id> <account>" >&2; return 1; }
   _secrets:password "$1" "$2" || { log error "Failed to find $1 / $2"; return 1; }
 }
 
-# Copy a secret to the clipboard, then clear it after SECRETS_CLIPBOARD_TTL
-# seconds (default 30). The clipboard is only cleared if it still holds the same
-# value, so anything copied in the meantime survives.
-# Usage: secret:copy <id> <account>
 secret:copy() {
   (( $# == 2 )) || { echo "Usage: secret:copy <id> <account>" >&2; return 1; }
   local password snapshot ttl="${SECRETS_CLIPBOARD_TTL:-30}"
@@ -947,8 +702,6 @@ secret:copy() {
   log success "Copied $1 / $2 to the clipboard (auto-clears in ${ttl}s)"
 }
 
-# Remove a secret from the dotfiles keychain, then sync to iCloud Drive.
-# Usage: secret:remove <id> <account>
 secret:remove() {
   (( $# == 2 )) || { echo "Usage: secret:remove <id> <account>" >&2; return 1; }
   if security delete-generic-password "$_SECRETS_LOOKUP_FLAG" "$1" -a "$2" "$_SECRETS_KEYCHAIN" >/dev/null 2>&1; then
@@ -959,23 +712,14 @@ secret:remove() {
   secrets:export
 }
 
-# Rename a managed secret and optionally update its metadata. The source must
-# exist and the target (when different) must not, which prevents silent
-# overwrites. It also refuses a (where, account) pair another entry already
-# owns, since `add-generic-password -U` matches on that pair and would replace
-# that entry instead of moving this one. Omit where, kind, or comment to keep
-# the current value.
-# Usage: secret:rename <old_id> <old_account> <new_id> <new_account> [new_where] [new_kind] [new_comment]
 secret:rename() {
   (( $# >= 4 && $# <= 7 )) || {
     echo "Usage: secret:rename <old_id> <old_account> <new_id> <new_account> [new_where] [new_kind] [new_comment]" >&2
     return 1
   }
   local old_id="$1" old_acct="$2" new_id="$3" new_acct="$4" password new_where new_kind new_comment
-  # Two different notions of "same entry" are in play. same_lookup answers
-  # "would the target collide with a different entry under the lookup field",
-  # while same_storage answers "does add-generic-password -U update this item
-  # in place", which macOS decides from (Service, Account) alone.
+  # same_lookup means the target cannot collide under the lookup field.
+  # same_storage means `add-generic-password -U` updates this item in place.
   local same_lookup=0
   [[ "$old_id" == "$new_id" && "$old_acct" == "$new_acct" ]] && same_lookup=1
 
@@ -996,16 +740,13 @@ secret:rename() {
   local same_storage=0
   [[ "$new_where" == "$cur_where" && "$new_acct" == "$old_acct" ]] && same_storage=1
 
-  # Writing a (Service, Account) pair that belongs to another entry would
-  # replace that entry instead of moving this one.
   if (( ! same_storage )) && _secrets:storage-taken "$new_where" "$new_acct"; then
     log error "Rejected $new_id / $new_acct (another entry already holds this where and account, run secrets:list to find it)"
     return 1
   fi
 
   _secrets:install "$new_id" "$new_acct" "$new_where" "$new_kind" "$password" "$new_comment" || return 1
-  # Only a changed storage pair leaves the original item behind, and it is
-  # addressed by that pair, because the new item may now share the old Label.
+  # Delete by the storage pair, because the new item may share the old Label
   if (( ! same_storage )) \
     && ! security delete-generic-password -s "$cur_where" -a "$old_acct" "$_SECRETS_KEYCHAIN" >/dev/null 2>&1; then
     log warning "Skipped removing $old_id / $old_acct (copy left behind, remove it with secret:remove)"
@@ -1015,9 +756,6 @@ secret:rename() {
   secrets:export
 }
 
-# List managed secrets as a sorted table (ID, Account, Kind, Used by, Where).
-# Reads the keychain directly (one `security` call in total), so entries added
-# outside secret:set show up too.
 secrets:list() {
   if [[ ! -f "$_SECRETS_KEYCHAIN" ]]; then
     log warning "Failed to find keychain ($_SECRETS_KEYCHAIN)"
@@ -1033,17 +771,10 @@ secrets:list() {
   } | column -t -s $'\t'
 }
 
-# Sync tokens-file entries into the keychain and report the status of each one.
-# The keychain stays the source of truth. Entries it lacks are imported from the
-# file (for example after an iCloud sync from another machine), while stale file
-# passwords (drift or placeholder) are left for secrets:export to overwrite.
-# A password of the literal string "placeholder" is a stub row from older tokens
-# files (secret:set used to append one). It is reported, never imported. Restore
-# the real value with secret:set, or drop the row by running secrets:export.
-# A "conflict" row is one whose Where and Account already belong to a different
-# keychain entry. It is reported, never imported, because writing it would
-# replace that entry. Run secrets:list to find the owner.
-# Exits non-zero while any entry still needs attention.
+# This imports entries the keychain lacks and leaves stale file passwords for
+# secrets:export to overwrite. A password of "placeholder" marks a stub row. It
+# reports stubs and rows whose Where and Account belong to another entry, and
+# never imports them.
 secrets:import() {
   if [[ ! -f "$_SECRETS_TOKENS_FILE" ]]; then
     log warning "Failed to find tokens file ($_SECRETS_TOKENS_FILE)"
@@ -1057,12 +788,9 @@ secrets:import() {
     [[ -z "$id" || "$id" == \#* ]] && continue
     (( ++total ))
     kc_pw="$(_secrets:password "$id" "$acct")"; rc=$?
-    if (( rc == 44 )); then    # errSecItemNotFound, the entry is definitively absent
+    if (( rc == 44 )); then    # errSecItemNotFound
       if [[ -z "$file_pw" || "$file_pw" == placeholder ]]; then
         state="missing"; (( ++drift ))
-      # Absent under the lookup field is not the same as absent in storage.
-      # macOS keys generic passwords by (Service, Account), so importing a row
-      # whose pair another entry already owns would overwrite that entry.
       elif _secrets:storage-taken "$where" "$acct"; then
         state="conflict"; (( ++drift ))
       elif _secrets:install "$id" "$acct" "$where" "$kind" "$file_pw" "$comment"; then
@@ -1070,7 +798,7 @@ secrets:import() {
       else
         state="failed"; (( ++drift ))
       fi
-    elif (( rc != 0 )); then   # locked keychain or denied read, never write blind
+    elif (( rc != 0 )); then   # Locked or denied, so never write blind
       state="failed"; (( ++drift ))
     elif [[ "$file_pw" == placeholder ]]; then
       state="placeholder"; (( ++drift ))
@@ -1095,10 +823,7 @@ secrets:import() {
   log success "Synced $total / $total entries"
 }
 
-# Read the password a previous export recorded for an entry. Lets secrets:export
-# carry a value forward when the keychain read fails, instead of dropping the
-# row. Exits non-zero when the file holds no row for the pair.
-# Usage: _secrets:backed-up-password <id> <account>
+# Lets secrets:export carry a value forward when the keychain read fails
 _secrets:backed-up-password() {
   [[ -f "$_SECRETS_TOKENS_FILE" ]] || return 1
   local f_id f_acct f_where f_kind f_comment f_pw
@@ -1112,26 +837,14 @@ _secrets:backed-up-password() {
   return 1
 }
 
-# Summarize the entries secrets:export could not read, keeping the two outcomes
-# apart. A carried-over entry still has its value in the backup, a dropped one
-# does not, so reporting them under one heading would make real loss look
-# temporary. The status stays zero either way, because secrets:export is the
-# tail call of secret:set, secret:remove and secret:rename, and one unreadable
-# entry must not make an otherwise successful command report failure.
-# Usage: _secrets:report-unread <kept> <dropped>
+# Returns zero because secrets:export is the tail call of secret:set,
+# secret:remove and secret:rename, which one unreadable entry must not fail
 _secrets:report-unread() {
   (( $1 )) && log warning "Carried $1 secret(s) over from the previous backup (failed to read them)"
   (( $2 )) && log error "Dropped $2 secret(s) from the backup (failed to read, with no backed-up value to keep)"
   return 0
 }
 
-# Atomically rewrite the iCloud tokens file from the current keychain values.
-# Reads the keychain itself (the source of truth), so entries added outside
-# secret:set are exported too. An entry whose password cannot be read keeps the
-# value the previous backup holds, and is dropped only when there is nothing to
-# keep. File entries that have vanished from the keychain are dropped with a
-# warning. The write is skipped when nothing changed, so iCloud only re-uploads
-# on a real update.
 secrets:export() {
   _secrets:ensure-tokens-file
 
@@ -1141,15 +854,13 @@ secrets:export() {
 
   _secrets:write-header "$tmp"
   while IFS=$'\t\t' read -r id account where kind comment; do
-    # (Service, Account) is unique at the storage layer, so this hits exactly
-    # the enumerated entry regardless of the configured lookup field.
+    # (Service, Account) is unique, so this finds the entry under any lookup
+    # field
     if password="$(security find-generic-password -s "$where" -a "$account" -w "$_SECRETS_KEYCHAIN" 2>/dev/null)"; then
       print -r -- "${id}"$'\t'"${account}"$'\t'"${where}"$'\t'"${kind}"$'\t'"${comment}"$'\t'"${password}" >> "$tmp"
       (( ++count ))
-    # A read can fail for one entry alone (an item added outside secret:set has
-    # no -A ACL, so `security` prompts and a denial fails just that read). Carry
-    # the previous backup value forward rather than dropping the row for good.
-    # Metadata still comes from the keychain, so edits keep propagating.
+    # An item added outside secret:set has no -A ACL, so a denied prompt fails
+    # this read alone
     elif prior="$(_secrets:backed-up-password "$id" "$account")" && [[ -n "$prior" ]]; then
       print -r -- "${id}"$'\t'"${account}"$'\t'"${where}"$'\t'"${kind}"$'\t'"${comment}"$'\t'"${prior}" >> "$tmp"
       (( ++kept ))
@@ -1160,8 +871,8 @@ secrets:export() {
     fi
   done < <(_secrets:entries)
 
-  # Refuse to clobber a populated backup from an empty keychain (e.g. a fresh
-  # machine whose iCloud backup synced down after bootstrap already ran).
+  # A fresh machine's iCloud backup can sync down after bootstrap has already
+  # run
   if (( count == 0 )) && grep -qvE '^[[:space:]]*#|^[[:space:]]*$' "$_SECRETS_TOKENS_FILE"; then
     command rm -f "$tmp"
     trap - EXIT
@@ -1175,6 +886,7 @@ secrets:export() {
     <(awk -F'\t' '!/^[[:space:]]*#/ && NF>=2 {print $1 "\t" $2}' "$_SECRETS_TOKENS_FILE" | sort) \
     <(awk -F'\t' '!/^[[:space:]]*#/ && NF>=2 {print $1 "\t" $2}' "$tmp" | sort))
 
+  # Skipping the write means iCloud only re-uploads on a real update
   if cmp -s "$tmp" "$_SECRETS_TOKENS_FILE"; then
     command rm -f "$tmp"
     trap - EXIT
@@ -1194,15 +906,9 @@ secrets:export() {
 
 # ----------------------- macOS System Tweaks & Utilities -------------------- #
 
-# Print what the runaway watcher currently flags. Usage: runaway:alerts
-#
-# ~/.local/bin/runaway-watch runs every two minutes from launchd and lists a
-# process that stays busy, a group that stays suspended, or a GPU that stays
-# loaded. It also sends a notification, but a Focus mode files that away
-# without a banner, so every new terminal says it again until the problem is
-# gone. A list older than ten minutes means the agent itself stopped, so it is
-# not repeated as current, and neither is one dated in the future (`^ms-0`, as
-# in run:daily). File tests only, no fork.
+# A Focus mode hides runaway-watch's notification, so every new terminal repeats
+# it. A list older than ten minutes means the agent stopped, and `^ms-0`
+# excludes one dated in the future.
 runaway:alerts() {
   local alerts="${XDG_CACHE_HOME:-$HOME/.cache}/runaway-watch/alerts"
   [[ -t 1 ]] || return 0
@@ -1212,13 +918,7 @@ runaway:alerts() {
   print -r -- "$(<"$alerts")"
 }
 
-# Let Touch ID authenticate sudo, by adding pam_tid to /etc/pam.d/sudo_local.
-#
-# That file is the supported place for this since macOS 14. /etc/pam.d/sudo
-# ships an `auth include sudo_local` line and is replaced on every macOS
-# update, so an edit made there is silently lost and Touch ID stops working.
-# sudo_local is left alone. Creating it needs no backup or rollback either,
-# because the file belongs to us rather than to macOS.
+# This uses sudo_local because every macOS update replaces /etc/pam.d/sudo
 sudo:touch-id() {
   local file='/etc/pam.d/sudo_local'
   local line='auth       sufficient     pam_tid.so'
@@ -1243,10 +943,8 @@ sudo:touch-id() {
   log success "Enabled Touch ID for sudo"
 }
 
-# Reveal the "App Store and known developers" alternative in System Settings >
-# Privacy & Security. macOS 26 documents only the --global-* pair, and
-# --global-disable no longer turns Gatekeeper off by itself: it unhides the
-# setting, which still has to be changed there.
+# On macOS 26 this only unhides "App Store and known developers" in Privacy &
+# Security, which still has to be selected there
 gatekeeper:disable() {
   sudo spctl --global-disable
 }
@@ -1259,8 +957,6 @@ hostname:get() {
   scutil --get ComputerName
 }
 
-# Set the computer, host, and local host names in one go.
-# Usage: hostname:set <new_hostname>
 hostname:set() {
   if [[ $# -ne 1 ]]; then
     echo "Usage: hostname:set <new_hostname>" >&2
@@ -1269,11 +965,8 @@ hostname:set() {
 
   local new_hostname="$1"
 
-  # LocalHostName is the Bonjour name and takes only letters, digits and
-  # hyphens, where ComputerName takes any UTF-8. Derive one the way System
-  # Settings does, because scutil rejects the rest: setting the repo's own
-  # default_hostname of "void(0)" used to set the first two names and then fail
-  # on the third, leaving the machine half-renamed.
+  # LocalHostName is the Bonjour name, so scutil rejects anything but letters,
+  # digits and hyphens, including the default_hostname of "void(0)"
   local local_hostname="${new_hostname//[^a-zA-Z0-9-]/-}"
   while [[ "$local_hostname" == *--* ]]; do
     local_hostname="${local_hostname//--/-}"
@@ -1301,7 +994,6 @@ hostname:reset() {
   hostname:set "${DEFAULT_HOSTNAME}"
 }
 
-# Rebuild the Dock from scratch with only the apps listed in DOCK_APPS.
 dock:reset() {
   defaults delete com.apple.dock
   killall Dock
@@ -1345,20 +1037,16 @@ system:sleep() {
 
 # ---------------------------------- Docker ---------------------------------- #
 
-# Best-effort bulk docker subcommand. Empty input is a no-op, and failures are
-# swallowed on purpose, since stop, rm, and rmi often race against each other.
-# Usage: _docker:bulk <subcommand> <ids>
+# This ignores failures because stop, rm and rmi often race each other
 _docker:bulk() {
   local cmd="$1" ids="$2"
   [[ -n "$ids" ]] || return 0
   print -r -- "$ids" | xargs docker "$cmd" 2>/dev/null || true
 }
 
-# Remove every container and image, stopping the containers first. Anything
-# whose ID, container name, or image repository matches keep_pattern is kept.
-# Pass a single extended regular expression, because extra arguments are joined
-# with a space into one pattern rather than treated as alternatives.
-# Usage: docker:cleanup [keep_pattern]
+# An optional extended regex keeps matching IDs, container names and image
+# repositories. Extra arguments join into one pattern rather than acting as
+# alternatives.
 docker:cleanup() {
   docker info &>/dev/null || {
     log error "Failed to reach the Docker daemon (start Docker Desktop and retry)"
@@ -1381,50 +1069,29 @@ docker:cleanup() {
 
 # -------------------------------- Toolchain --------------------------------- #
 
-# Not `mise upgrade --bump`, which would rewrite the chezmoi-tracked config.
-#
-# Scoped to $HOME with -C, like run_onchange_after_06-install-mise-tools. This
-# fires unattended from run:daily, in whatever directory the shell started in,
-# and mise reads [tools] from the working directory upward. Unscoped, opening
-# the first terminal of the day in a project checkout would install that
-# project's whole toolchain as a side effect.
+# Not `mise upgrade --bump`, which would rewrite the chezmoi-tracked config. -C
+# keeps this unattended run from installing the toolchain of the project the
+# shell started in.
 mise:update() {
   local output
 
-  # MISE_LOG_LEVEL=warn rather than `-q` or `--silent`. Since mise 2026.9.2 a
-  # captured upgrade narrates its version resolution at the default `info`
-  # level, one line per configured tool, which buries the report this function
-  # exists to keep empty. The quiet flags drop that narration and keep the
-  # summary of what changed, which mise writes outside the log, but they also
-  # drop the warnings worth reading, a release held back by minimum_release_age
-  # or a version list mise could not fetch, both of which still exit 0.
-  #
-  # Spell the value `warn`. Any other spelling falls back to `info` without an
-  # error and quietly restores the narration, and the `--log-level` flag is no
-  # substitute, because it rejects `warn` and its `warning` value changes
-  # nothing.
-  #
-  # The cost is every other `info` message, and one of them is real. After a
-  # `java` bump mise prints the commands that register the new JDK with
-  # /Library/Java/JavaVirtualMachines. Run the upgrade by hand to see them.
+  # A captured upgrade logs every tool at `info`, while `-q` also drops warnings
+  # about held-back releases and unfetchable version lists, which still exit 0.
+  # Any other spelling of `warn` falls back to `info` without an error, and
+  # `--log-level` rejects it. The commands that register a bumped JDK are `info`
+  # too, so run the upgrade by hand to see them.
   if ! output=$(MISE_LOG_LEVEL=warn mise -C "$HOME" upgrade 2>&1 </dev/null); then
     log warning "Failed to update mise-managed tools"
     print -r -- "$output" >&2
-    # Warn rather than fail, so a hand run offline does not look broken.
-    # run:daily ignores the status anyway. It stamps the day before it
-    # launches, so an offline laptop retries tomorrow, not on every new shell.
     return 0
   fi
 
   [[ -n "$output" ]] && print -r -- "$output"
 
-  # Not redundant. The `&&` above leaves status 1 whenever there is nothing to
-  # print, which is the common no-op path, and a hand run of this function
-  # should not look like it failed.
+  # The `&&` above leaves status 1 on the common no-op path
   return 0
 }
 
-# Report deprecated and outdated Homebrew packages without changing anything.
 brew:check() {
   local deprecated outdated
 
@@ -1441,16 +1108,9 @@ brew:check() {
   log info "Detected ${#outdated_lines} outdated Homebrew package(s) (run 'brew upgrade' to update)"
 }
 
-# Rewrite the Brewfile from what Homebrew currently has installed.
-#
-# --no-npm is why this wrapper exists. `brew bundle dump` runs `npm ls -g`
-# against the first npm on PATH, which under mise is not Homebrew's, so a plain
-# dump records that node's global packages (today just corepack) as Homebrew's.
-# A later `brew bundle` would install them into whichever node is active then.
-#
-# Runtime formulae stay out of the Brewfile as long as Homebrew has them marked
-# as dependencies. If one reappears, Homebrew still has it flagged as installed
-# on request. Clear that with `brew tab --no-installed-on-request <formula>`.
+# `brew bundle dump` runs `npm ls -g` against the first npm on PATH, which under
+# mise is not Homebrew's, so without --no-npm it records that node's global
+# packages
 brew:dump() {
   cmd:exists brew || { log error "Failed to find brew"; return 1; }
   cmd:exists chezmoi || { log error "Failed to find chezmoi"; return 1; }
@@ -1467,11 +1127,8 @@ brew:dump() {
   fi
 }
 
-# Record the Zed extensions installed on this machine so a fresh machine can
-# restore them. Zed has no CLI to export the list and `brew bundle` covers only
-# VS Code and its forks, so the list comes from the index Zed maintains itself.
-# dot_config/zed/private_settings.json.tmpl renders it as auto_install_extensions, which
-# Zed acts on at startup.
+# Zed has no CLI to export the list, so it comes from the index Zed maintains
+# itself
 zed:dump() {
   cmd:exists jq || { log error "Failed to find jq"; return 1; }
   cmd:exists chezmoi || { log error "Failed to find chezmoi"; return 1; }
@@ -1484,18 +1141,15 @@ zed:dump() {
   target="${source_dir}/.chezmoidata/zed.toml"
   mkdir -p "${target:h}" || return 1
 
-  # Read the list before opening the file. A brace group exits with the status of
-  # its last command, so a jq failure inside the redirect below would overwrite a
-  # good list with an empty one and still report success.
+  # Read the list outside the redirect below, where a jq failure would overwrite
+  # a good list and still report success
   local -a entries
   entries=( ${(f)"$(jq -r '.extensions | keys | .[] | "  \"\(.)\","' "$index")"} ) || {
     log error "Failed to parse Zed extension index (${index})"
     return 1
   }
 
-  # Sorted, one per line, so adding an extension is a one-line diff. TOML allows
-  # the trailing comma jq leaves on the last entry. The guard is there because
-  # `print -rl` on an empty array still emits a blank line.
+  # The guard is there because `print -rl` on an empty array emits a blank line
   {
     print -r -- "# Zed extensions installed on this machine, rendered into"
     print -r -- "# auto_install_extensions by dot_config/zed/private_settings.json.tmpl."
@@ -1510,20 +1164,12 @@ zed:dump() {
 
 # ---------------------------------- Skills ---------------------------------- #
 
-# Rewrite .chezmoidata/skills-owners.toml from the people listed in
-# agent_skill_owners, so wanting everything somebody publishes costs one line
-# rather than one entry per skill. ARCHITECTURE.md explains why the result is
-# committed rather than resolved at apply time.
-#
-# Run it when a watched person publishes something, or to find out whether they
-# have. It only ever writes the generated file, so the diff is the review.
 skills:sync() {
   cmd:exists yq || { log error "Failed to find yq"; return 1; }
   cmd:exists chezmoi || { log error "Failed to find chezmoi"; return 1; }
 
-  # Every local up front. In zsh a bare `local x` inside a loop re-declares a
-  # variable that already has a value and echoes it. MATCH, MBEGIN, MEND and
-  # their arrays are what the =~ tests below set.
+  # Declare these up front, because a bare `local x` in a loop echoes a variable
+  # that has a value. The =~ tests below set MATCH and the related names.
   local source_dir inventory target owner json rows rec name url repo file dir entry
   local MATCH MBEGIN MEND
   local -i i=0 page pages
@@ -1534,19 +1180,18 @@ skills:sync() {
   inventory="${source_dir}/.chezmoidata/skills.toml"
   target="${source_dir}/.chezmoidata/skills-owners.toml"
 
-  # The inventory is read directly rather than through chezmoi's merged data,
-  # so a broken generated file cannot stop the sync that rewrites it.
+  # Read the file directly, not chezmoi's merged data, so a broken generated
+  # file cannot stop the sync that rewrites it
   owners=( ${(f)"$(yq -p toml -oy '.agent_skill_owners[]' "$inventory")"} ) || return 1
   (( ${#owners} )) || { log error "Failed to read agent_skill_owners from ${inventory:t}"; return 1; }
 
-  # Names the hand-written file claims. Those win, so a deliberate choice of
-  # source survives a sync that would otherwise replace it.
+  # Hand-written entries win, so a deliberate choice of source survives a sync
   for name in ${(f)"$(yq -p toml -oy '.agent_skills | keys | .[]' "$inventory")"}; do
     claimed[$name]=1
   done
 
-  # The registry answers 60 skills a page, and an owner with nothing to list is
-  # far more likely a typo than a person who published nothing.
+  # `yq -e` fails an empty list, because an owner with no skills is probably a
+  # typo
   for owner in "${owners[@]}"; do
     progress:bar $(( i++ )) ${#owners} "Fetching the skilld registry…" "$owner"
     page=1
@@ -1573,9 +1218,8 @@ skills:sync() {
       continue
     fi
 
-    # https://github.com/OWNER/REPO/blob/REF/PATH/SKILL.md, where the path is
-    # percent encoded. A monorepo directory called @scope arrives as %40scope
-    # and would match nothing, so decode before using it as a glob.
+    # The path is percent encoded, so @scope arrives as %40scope and would match
+    # nothing
     repo="${${url#https://github.com/}%%/blob/*}"
     file="${${url#https://github.com/}#*/blob/}"
     file="${file#*/}"
@@ -1583,10 +1227,9 @@ skills:sync() {
     dir="${file%/*}"
     [[ "$dir" == "$file" ]] && dir=""
 
-    # The name, repository and path end up as a TOML key, a directory and
-    # arguments in a shell script, and two skills cannot share a name. Anything
-    # outside these patterns is refused rather than escaped, and the first owner
-    # in agent_skill_owners keeps a contested name.
+    # These become a TOML key, a directory and shell arguments, so anything
+    # outside the patterns is refused rather than escaped. The first owner keeps
+    # a contested name.
     if [[ ! "$name" =~ '^[a-z0-9]+(-[a-z0-9]+)*$' \
       || ! "$repo" =~ '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' \
       || ( -n "$dir" && ! "$dir" =~ '^[A-Za-z0-9._@+-]+(/[A-Za-z0-9._@+-]+)*$' ) \
@@ -1599,8 +1242,6 @@ skills:sync() {
       continue
     fi
 
-    # One record per line, name first, so the list sorts by the directory name
-    # the skill gets and the diff stays readable.
     entry="[agent_skills.${name}]"$'\n'"repo = \"${repo}\""
     [[ -n "$dir" ]] && entry+=$'\n'"path = \"${dir}\""
     entries+=( "${name}"$'\t'"${entry}" )
@@ -1610,8 +1251,6 @@ skills:sync() {
   (( ${#entries} )) || { log error "Failed to resolve any skill for the configured owners"; return 1; }
   entries=( ${(o)entries} )
 
-  # Build the whole file before touching the old one, so a failure above cannot
-  # leave a truncated list behind.
   {
     print -r -- "# Agent Skills belonging to the people listed in agent_skill_owners, resolved"
     print -r -- "# from the skilld.dev registry. GENERATED FILE: every entry here is rewritten by"
@@ -1635,27 +1274,14 @@ skills:sync() {
 }
 
 # ------------------------------- Claude Code -------------------------------- #
-#
-# Optional extra Claude Code accounts. Plain `claude` stays the primary account
-# in ~/.claude and nothing here touches it. An extra account is a directory
-# under ~/.claude-accounts used as CLAUDE_CONFIG_DIR, which gives it its own
-# login, keychain item, .claude.json and session history. Its configuration
-# comes from ~/.claude, so chezmoi keeps managing a single copy.
-# ARCHITECTURE.md covers what is shared, what stays separate and what Chrome
-# needs.
-#
-# Naming: claude:* takes one account, claude:accounts lists them all. Helpers
-# are claude:_* and there is no global, because Claude Code's shell snapshot
-# drops functions named _* and plain variables, and these have to work from its
-# Bash tool too.
-#
-# ---------------------------------------------------------------------------- #
 
-# Internal: print the CLAUDE_CONFIG_DIR of an account. Claude Code keys the
-# keychain item on this exact string, so a trailing slash or a path through a
-# symlink would be a different login. The name check also keeps claude:remove
-# inside ~/.claude-accounts.
-# Usage: claude:_path <account>
+# Helpers are claude:_* with no globals, because Claude Code's shell snapshot
+# drops functions named _* and plain variables, and these have to work from its
+# Bash tool.
+#
+# Claude Code keys the keychain item on this exact string, so a trailing slash
+# or a path through a symlink would be a different login. The name check also
+# keeps claude:remove inside ~/.claude-accounts.
 claude:_path() {
   if [[ -z "$1" || "$1" == *[^a-z0-9-]* || "$1" == -* ]]; then
     log error "Rejected account name '$1' (use lowercase letters, digits and hyphens)"
@@ -1664,8 +1290,6 @@ claude:_path() {
   print -r -- "${HOME}/.claude-accounts/$1"
 }
 
-# Internal: print the CLAUDE_CONFIG_DIR of an account that exists.
-# Usage: claude:_home <account>
 claude:_home() {
   local home
   home="$(claude:_path "$1")" || return 1
@@ -1673,37 +1297,20 @@ claude:_home() {
   print -r -- "$home"
 }
 
-# Internal: link an account to what every account shares in ~/.claude, which is
-# the configuration and the record of past work, so that any account can read
-# the memory of a project and continue a session another account started. This
-# runs before every launch, so a skill or agent added since the last one
-# appears, and it skips whatever is already right.
+# State directories hold a .keep file because Claude Code's cleanup deletes
+# empty ones, which would leave a running account on a dangling link.
 #
-# The state directories are created here so that a link exists before the first
-# session needs it. Claude Code's cleanup deletes an empty directory, which would
-# leave a running account on a dangling link, so each one holds a .keep file.
+# A real file in the way is how an account keeps its own configuration, while a
+# real state directory means it works apart from the others. settings.json is
+# the exception: it registers the guard hooks, the only guard under
+# --dangerously-skip-permissions. Each link is one hop, because Claude Code
+# replaces a second hop with a regular file.
 #
-# What stays per account is tied to a login or a running process: .claude.json,
-# the keychain item, skills/synced, sessions, daemon, jobs, chrome and telemetry.
+# skills gets one link per entry, because skills/synced belongs to the signed-in
+# account.
 #
-# A real file or directory in the way stays, which is how an account keeps its
-# own version of the configuration. A real state directory means that account
-# works apart from the others, so that gets a warning at every launch.
-# settings.json is the exception: it registers the guard hooks, and
-# with --dangerously-skip-permissions those are the only guard, so no session
-# may start without it. Each link is one hop on purpose, because Claude Code
-# writes settings through a single symlink and replaces a second one with a
-# regular file.
-#
-# skills gets one link per entry, because skills/synced holds the skills of the
-# signed-in claude.ai account and has to stay separate.
-#
-# Launches at the same moment race to create these links. `ln` without -f never
-# removes a link another launch just made, so the loser fails on a link that is
-# already right and carries on. -f is left for repairing a wrong link, where a
-# launch at the same moment can stop on settings.json until a retry. Among the
-# links only settings.json stops a launch.
-# Usage: claude:_link-shared <home>
+# `ln` without -f never removes a link another launch just made, so a launch
+# that loses the race continues. -f only repairs a wrong link.
 claude:_link-shared() {
   emulate -L zsh
   local home="$1" shared="${HOME}/.claude" entry
@@ -1743,24 +1350,17 @@ claude:_link-shared() {
   return 0
 }
 
-# Internal: run a command as an account, in a subshell so that nothing reaches
-# this shell. All of this has to be in the environment at launch:
-# CLAUDE_CONFIG_DIR in a settings file moves the configuration but leaves
-# .claude.json and the keychain item behind.
+# This has to be in the environment at launch, because CLAUDE_CONFIG_DIR in a
+# settings file leaves .claude.json and the keychain item behind.
 #
-# CLAUDE_CODE_PLUGIN_CACHE_DIR gives every account the plugin root of ~/.claude
-# under the same absolute paths. ANTHROPIC_CONFIG_DIR moves the Console login
-# store, which CLAUDE_CONFIG_DIR does not cover: left in ~/.config/anthropic, a
-# new account would pass as signed in and a logout would delete another
-# account's login. BROWSER sends sign-ins to the account's Chrome profile,
-# because the default browser may hold another account's claude.ai session and
-# would sign this one in as that account without saying so.
+# ANTHROPIC_CONFIG_DIR moves the Console login store, which CLAUDE_CONFIG_DIR
+# does not cover: a new account would pass as signed in and a logout would
+# delete another account's login. BROWSER keeps sign-ins out of a default
+# browser that may hold another account's claude.ai session.
 #
-# The unset list names what a shell or a parent Claude Code session passes down
-# that would take over from the account's own login or mark this launch as a
-# child of that session. Other session variables stay, since they do neither.
-# `command` because exec on its own would run the claude function instead.
-# Usage: claude:_run <home> <command> [args...]
+# The unset list names what a parent shell or session passes down that would
+# replace the account's login or mark this launch as a child session. `command`
+# is there because exec alone would run the claude function.
 claude:_run() {
   local home="$1"; shift
   (
@@ -1777,9 +1377,7 @@ claude:_run() {
   )
 }
 
-# Internal: print how far an account's Chrome profile is set up. Whether the
-# extension is signed in sits in its own storage, so claude:accounts cannot say.
-# Usage: claude:_chrome-state <account>
+# The extension's own login sits in its storage, so this cannot report it
 claude:_chrome-state() {
   local profile="${HOME}/Library/Application Support/Google/Chrome/Profile claude-$1"
   if [[ -d "${profile}/Extensions/fcoeoabgfenejglbffodgkkbkcdhcgfn" ]]; then
@@ -1791,13 +1389,10 @@ claude:_chrome-state() {
   fi
 }
 
-# Internal: print --fork-session when these claude arguments would reopen a
-# conversation another process holds. Claude Code lets that happen, and two writers
-# fork the transcript so that the next resume hides one side of it. A copy leaves
-# the original untouched. With no session named, --continue and the picker can land
-# on anything run in this directory, so any live session here counts. A session
-# given by name counts as none named, because only its id leads to an owner.
-# Usage: claude:_fork-live [claude args...]
+# Two processes on one conversation fork its transcript, and the next resume
+# hides one side. With no session named, --continue and the picker can land on
+# anything run in this directory, so any live session here counts. A session
+# name counts as none named, because only an id identifies an owner.
 claude:_fork-live() {
   emulate -L zsh -o extended_glob
   local resuming holder
@@ -1818,29 +1413,21 @@ claude:_fork-live() {
   print -r -- --fork-session
 }
 
-# The `claude` alias expands to this function, so plain claude cannot reopen a session
-# an account is running either. Without accounts it adds nothing.
+# The alias expands to this function, so plain claude cannot reopen an account's
+# live session either
 claude() {
   command claude $(claude:_fork-live "$@") "$@"
 }
 
-# Run Claude Code as an account, with the flags of the `claude` alias. Arguments
-# go after those flags, so a later --effort wins over the alias.
+# The alias is read at call time, because this file loads before .aliases.
+# Arguments go after its flags, so a later --effort wins.
 #
-# The alias is read at call time, since this file loads before .aliases. User
-# MCP servers live in .claude.json, which stays per account, so the primary's
-# file goes in as --mcp-config, which reads only its mcpServers key and fails
-# without one. The = form matters: the flag takes several values and would
-# swallow the arguments after it.
+# --mcp-config reads only the mcpServers key and fails without one. The = form
+# matters, because the flag takes several values and would swallow the arguments
+# after it.
 #
-# From $HOME an account also finds ~/.claude/settings.json as project settings.
-# Claude Code then writes a project row for every enabled plugin into the shared
-# registry, and `claude plugin list` shows each plugin twice for every account.
-# Those rows outlast the session, so the flag drops the project source there.
-# That also costs the session the project files of $HOME and below, as the
-# limits in ARCHITECTURE.md list, and starting in the project directory avoids
-# it.
-# Usage: claude:as <account> [claude args...]
+# From $HOME an account finds ~/.claude/settings.json as project settings and
+# writes lasting project rows for every plugin into the shared registry.
 claude:as() {
   (( $# >= 1 )) || { echo "Usage: claude:as <account> [claude args...]" >&2; return 1; }
   emulate -L zsh
@@ -1858,10 +1445,6 @@ claude:as() {
   claude:_run "$home" ${=aliases[claude]:-claude} "${flags[@]}" "$@"
 }
 
-# Open an account's Chrome profile, at a web URL if given. Chrome creates the
-# profile the first time. Browser tools need it open, because the extension only
-# connects while its profile is loaded.
-# Usage: claude:chrome <account> [url]
 claude:chrome() {
   (( $# >= 1 && $# <= 2 )) || { echo "Usage: claude:chrome <account> [url]" >&2; return 1; }
   local home
@@ -1869,10 +1452,6 @@ claude:chrome() {
   claude:_run "$home" "${HOME}/.local/bin/claude-account-browser" "${@:2}"
 }
 
-# List every account with the claude.ai identity its .claude.json records and
-# the state of its Chrome profile. Accounts on one identity connect to the same
-# browsers, which is what a sign-in in the wrong browser leaves behind, so that
-# gets a warning.
 claude:accounts() {
   emulate -L zsh
   cmd:exists jq || { log error "Failed to find jq"; return 1; }
@@ -1908,10 +1487,6 @@ claude:accounts() {
   done
 }
 
-# Create an account and sign it in, or finish a setup that stopped halfway. The
-# sign-in opens in the account's own Chrome profile, and the extension signs in
-# from the same claude.ai session, so both end up on one identity.
-# Usage: claude:add <account>
 claude:add() {
   (( $# == 1 )) || { echo "Usage: claude:add <account>" >&2; return 1; }
   emulate -L zsh
@@ -1938,11 +1513,8 @@ claude:add() {
   log success "Added ${account} (start it with claude:as ${account})"
 }
 
-# Sign an account out and move its directory to the Trash. Signing out first
-# matters: the keychain item is keyed on the path, and nothing could find it once
-# the directory is gone. Memory and history stay in ~/.claude for the other
-# accounts, and the Chrome profile stays, since it may hold other logins.
-# Usage: claude:remove <account>
+# Signing out comes first, because the keychain item is keyed on the path and
+# nothing could find it once the directory is gone
 claude:remove() {
   (( $# == 1 )) || { echo "Usage: claude:remove <account>" >&2; return 1; }
   emulate -L zsh
@@ -1967,15 +1539,12 @@ claude:remove() {
 
 # ------------------------------------ Git ----------------------------------- #
 
-# Git-powered colored diff (named gdiff to avoid shadowing /usr/bin/diff)
 if cmd:exists git; then
   gdiff() {
     git diff --no-index --color-words "$@"
   }
 fi
 
-# Delete a branch locally and on origin.
-# Usage: git:delete-branch <branch>
 git:delete-branch() {
   if [[ -z "$1" ]]; then
     echo "Usage: git:delete-branch <branch>" >&2
@@ -1984,8 +1553,6 @@ git:delete-branch() {
   git branch -d -- "$1" && git push origin :"$1"
 }
 
-# Apply a stash by index, leaving it on the stack.
-# Usage: gas <stash_index>
 gas() {
   if [[ -z "$1" ]]; then
     echo "Usage: gas <stash_index>" >&2
@@ -1994,8 +1561,6 @@ gas() {
   git stash apply "stash@{$1}"
 }
 
-# Interactively rebase the last N commits.
-# Usage: git:rebase <commit_count>
 git:rebase() {
   if [[ -z "$1" ]]; then
     echo "Usage: git:rebase <commit_count>" >&2
@@ -2004,10 +1569,6 @@ git:rebase() {
   git rebase -i "HEAD~$1"
 }
 
-# Copy the full target-branch content of every file that differs between two
-# branches. The result lands on the clipboard, ready to paste into a review or
-# a chat.
-# Usage: git:diff <source_branch> <target_branch> [exclude_pattern]
 git:diff() {
   if [[ $# -lt 2 ]]; then
     echo "Usage: git:diff <source_branch> <target_branch> [exclude_pattern]" >&2
@@ -2021,16 +1582,14 @@ git:diff() {
   local diff_args=("$source_branch...$target_branch")
   [[ -n "$exclude_pattern" ]] && diff_args+=(-- ":!$exclude_pattern")
 
-  # Collect the file list before writing anything, so a bad revision leaves the
-  # clipboard alone instead of clearing it and then reporting the failure.
+  # List the files first, so a bad revision leaves the clipboard alone
   local -a files
   files=( ${(f)"$(git diff --name-only "${diff_args[@]}")"} ) || {
     log error "Failed to list changed files (check '${source_branch}' and '${target_branch}' both exist)"
     return 1
   }
 
-  # pbcopy with nothing on stdin clears the clipboard, so an empty diff has to
-  # stop here instead of reporting a successful copy of nothing.
+  # pbcopy with nothing on stdin clears the clipboard
   if (( ! ${#files} )); then
     log info "Found no differing files between '${source_branch}' and '${target_branch}'"
     return 0
@@ -2047,15 +1606,9 @@ git:diff() {
 
 # --------------------------------- Chezmoi ---------------------------------- #
 
-# Clear the stale local state that a new shell or gpg trips over. Drops
-# group-write bits from insecure zsh completion directories and removes
-# leftover GnuPG lock files.
 chezmoi:cleanup() {
-  # Silence zsh completion warnings by dropping group-write permissions
   if cmd:exists compaudit; then
-    # One path per array element, because xargs splits a directory name that
-    # holds a space and leaves that directory group-writable. chmod also fails
-    # on anything this user does not own, so the message follows its status.
+    # xargs would split a directory name that holds a space
     local -a dirs=( ${(f)"$(compaudit 2>/dev/null)"} )
     if (( ${#dirs} )); then
       if chmod g-w "${dirs[@]}" 2>/dev/null; then
@@ -2066,7 +1619,6 @@ chezmoi:cleanup() {
     fi
   fi
 
-  # Remove stale GnuPG lock files
   local gpg_locks
   gpg_locks=("$HOME"/.gnupg/public-keys.d/pubring.db*.lock(N))
   if (( ${#gpg_locks[@]} )); then
@@ -2075,10 +1627,6 @@ chezmoi:cleanup() {
   fi
 }
 
-# Copy template-managed files back into the chezmoi source. Files that only use
-# {{ .chezmoi.homeDir }} sync automatically, with the home path substituted
-# back in. Files with secrets or other template variables need a manual merge,
-# and are reported instead of copied.
 chezmoi:sync() {
   cmd:exists chezmoi || { log error "Failed to find chezmoi"; return 1; }
 
@@ -2094,9 +1642,8 @@ chezmoi:sync() {
     [[ "$src" == *".chezmoi"* || "$src" == *"chezmoiscripts"* ]] && continue
     [[ ! -f "$target" ]] && continue
 
-    # Reverse homeDir substitution on the target. The trap is re-registered per
-    # iteration with the path baked in, because a function-scoped EXIT trap runs
-    # after locals are popped and a deferred "$tmp" would expand to nothing.
+    # The path is baked into the trap, because an EXIT trap runs after locals
+    # are popped
     tmp="$(mktemp)"
     trap "command rm -f ${(q)tmp}" EXIT
     sed "s|${home_dir}|{{ .chezmoi.homeDir }}|g" "$target" > "$tmp"
@@ -2108,7 +1655,7 @@ chezmoi:sync() {
 
     rel="${target#"$home_dir"/}"
 
-    # Look for template syntax beyond .chezmoi.homeDir, which needs a human
+    # Template syntax beyond .chezmoi.homeDir needs a human
     if sed 's/{{[^}]*\.chezmoi\.homeDir[^}]*}}//g' "$src" | grep -q '{{'; then
       log warning "Skipped ${rel} (has secrets/variables, use \`chezmoi merge ${target}\`)"
       (( skipped++ ))
@@ -2129,8 +1676,7 @@ chezmoi:sync() {
     (( skipped > 0 )) && log info "Skipped ${skipped} file(s) with complex templates"
   fi
 
-  # Not redundant. The `&&` above leaves status 1 whenever there is nothing to
-  # skip, which made an otherwise successful sync report failure.
+  # The `&&` above leaves status 1 when nothing was skipped
   return 0
 }
 

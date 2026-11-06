@@ -1,5 +1,3 @@
-# ----------------------------- Editor & Tools ------------------------------- #
-
 export EDITOR={{ .editor | quote }}
 export KUBE_EDITOR={{ .editor | quote }}
 
@@ -7,88 +5,55 @@ export KUBE_EDITOR={{ .editor | quote }}
 export INFISICAL_CLIENT_ID={{ includeTemplate "keychain" (list "Infisical Client ID" "jonathan" .keychain_name .keychain_lookup_field) | quote }}
 export INFISICAL_CLIENT_SECRET={{ includeTemplate "keychain" (list "Infisical Client Secret" "jonathan" .keychain_name .keychain_lookup_field) | quote }}
 
-# ----------------------------------- Node ----------------------------------- #
-
-# Verify TLS certificates by default, keeping whatever value this shell
-# inherited from its parent environment
 export NODE_TLS_REJECT_UNAUTHORIZED="${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
 
-# Persistent REPL history for `node`
 export NODE_REPL_HISTORY="${NODE_REPL_HISTORY:-$HOME/.node_history}"
 export NODE_REPL_HISTORY_SIZE="${NODE_REPL_HISTORY_SIZE:-32768}"
 export NODE_REPL_MODE="${NODE_REPL_MODE:-sloppy}"
 
-# Force maximum (24-bit) color output in CLI tools that respect FORCE_COLOR
+# 3 is 24-bit color
 export FORCE_COLOR=3
 
-# ---------------------------------- Python ---------------------------------- #
-
 export PYTHONIOENCODING="${PYTHONIOENCODING:-UTF-8}"
-
-# ---------------------------------- History --------------------------------- #
 
 HISTSIZE={{ .history_size }}
 SAVEHIST=$HISTSIZE
 # Unconditional, because /etc/zshrc has already set it to $ZDOTDIR/.zsh_history
 HISTFILE="$HOME/.zsh_history"
 
-setopt HIST_IGNORE_DUPS       # skip consecutive duplicates
-setopt HIST_IGNORE_SPACE      # skip commands starting with space
-setopt HIST_REDUCE_BLANKS     # trim superfluous whitespace
-setopt SHARE_HISTORY          # share history across sessions
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY
 
-# Commands matching this pattern are dropped from both the in-memory list and
-# $HISTFILE. HISTORY_IGNORE alone only filters the file write, so entries stay
-# visible in `history` until the shell exits. The zshaddhistory hook rejects
-# them earlier, so `history` never shows them at all.
+# HISTORY_IGNORE alone only filters the file write, so the hook keeps matches
+# out of `history` too
 HISTORY_IGNORE='({{ .history_ignore | join "*|" }}*)'
 zshaddhistory() {
   emulate -L zsh -o extended_glob
   [[ "${1%$'\n'}" != ${~HISTORY_IGNORE} ]]
 }
 
-# ------------------------------ Pager & Manuals ----------------------------- #
-
-# -X keeps the page on screen after less quits
 export MANPAGER="${MANPAGER:-less -X}"
 
-# ------------------------------------ GPG ----------------------------------- #
-
-# gpg needs the controlling tty to prompt for a passphrase in the terminal.
-# $TTY is zsh's own copy of what `tty` reports, so this needs no fork.
+# $TTY is zsh's own copy of what `tty` reports, so this needs no fork
 export GPG_TTY="$TTY"
 
-# ------------------------------ Default Values ------------------------------ #
-
-# Hostname that hostname:reset restores
 export DEFAULT_HOSTNAME={{ .default_hostname | quote }}
 
-# Token file on iCloud Drive that the secret:* and secrets:* functions read and
-# write
 export SECRETS_TOKENS_FILE={{ joinPath .icloud_secrets ".keychain/tokens" | quote }}
 
-# Dedicated keychain the secret:* and secrets:* functions read and write. The
-# name and the lookup field are configured via .chezmoidata.toml.
 export SECRETS_KEYCHAIN_NAME={{ .keychain_name | quote }}
 export SECRETS_KEYCHAIN_LOOKUP_FIELD={{ .keychain_lookup_field | quote }}
 # Not exported, because only functions in this shell read it
 typeset +x SECRETS_KEYCHAIN_PASSWORD={{ if hasKey . "keychain_password" }}{{ .keychain_password | shellQuote }}{{ else }}""{{ end }}
 
-# Paths the tre and trec functions hide from the tree view
 export TREE_IGNORE={{ .tree_ignore | quote }}
 
-# Basenames that rm() in .aliases deletes outright instead of trashing
 export TRASH_SKIP={{ .trash_skip | join "|" | quote }}
 
-# Apps that dock:reset pins, in order (comma-separated)
 export DOCK_APPS={{ .dock_apps | join "," | quote }}
 
-# ----------------------------------- Paths ---------------------------------- #
-
-# Per-machine extra directories, appended to PATH by .zshrc
 export PATH_ADD="${PATH_ADD:-}"
 
-# ----------------------------------- SSH ------------------------------------ #
-
-# Whether .zshrc starts ssh:agent for every interactive shell
 export AUTOSTART_SSH_AGENT="${AUTOSTART_SSH_AGENT:-{{ .autostart_ssh_agent }}}"

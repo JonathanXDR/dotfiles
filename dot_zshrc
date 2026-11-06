@@ -1,25 +1,17 @@
-# --------------------------------- Sources ---------------------------------- #
-
 source "${HOME}/.exports"
 source "${HOME}/.functions"
 
-# ----------------------------- PATH & Toolchain ----------------------------- #
-
-# Homebrew first, because `brew shellenv` prepends its own bin and sbin, and
-# the tool directories below have to land in front of them.
-#
-# Name the shell, because `brew shellenv` otherwise forks `ps` to guess it and
-# its own help warns that guess "may not be correct". Only the zsh reply puts
-# share/zsh/site-functions, where Homebrew's completions live, on fpath.
+# Homebrew goes first, because `brew shellenv` prepends its own bin and sbin.
+# Naming the shell avoids forking `ps` to guess it, and only the zsh reply puts
+# Homebrew's completions on fpath.
 if [[ -x "/opt/homebrew/bin/brew" ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv zsh)"
 elif [[ -x "/usr/local/bin/brew" ]]; then
   eval "$(/usr/local/bin/brew shellenv zsh)"
 fi
 
-# Tool directories. Each is prepended, so the last one listed takes priority.
-# Coursier is the exception, appended instead so its launchers never shadow a
-# same-named binary from Homebrew or mise.
+# Each is prepended, so the last one wins. Coursier is appended so its launchers
+# never shadow a binary from Homebrew or mise.
 path:add "$HOME/.local/bin"
 path:add "$HOME/.cargo/bin"
 path:add "$HOME/.console-ninja/.bin"
@@ -27,35 +19,22 @@ path:add "/Library/Frameworks/Python.framework/Versions/Current/bin"
 path:add "$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
 path:append "$HOME/Library/Application Support/Coursier/bin"
 
-# Per-machine extras from .exports, appended to stay behind everything above
 path:append ${(s.:.)PATH_ADD}
 
-# mise (Node, Python, bun, pnpm, global CLIs). Must run after every other PATH
-# writer. Activation snapshots PATH and re-derives it from that snapshot on
-# each prompt, so anything prepended later outranks the managed toolchain for
-# good. Homebrew ships its own node (a dependency of eslint, prettier, and
-# vercel), and this ordering keeps that copy behind mise's.
+# This runs after every other PATH writer, because activation re-derives PATH
+# from a snapshot on each prompt, so anything prepended later outranks the
+# managed toolchain
 cmd:exists mise && eval "$(mise activate zsh)"
 
-# ------------------------------ Plugins & Aliases --------------------------- #
-
-# The aws plugin prepends '$(aws_prompt_info)' to RPROMPT. Upstream relies on
-# oh-my-zsh.sh sourcing lib/theme-and-appearance.zsh for `setopt prompt_subst`,
-# and antidote loads plugin files only, so the substitution never runs and the
-# string prints literally. Opting out keeps the plugin's aliases and
-# completions without the prompt segment.
+# The aws plugin's RPROMPT segment prints literally, because antidote skips the
+# oh-my-zsh.sh that sets prompt_subst
 SHOW_AWS_PROMPT=false
 
-# Oh My Zsh plugins, listed in ~/.plugins and compiled by antidote (see
-# plugins:load in .functions). Runs before .aliases on purpose, so .aliases
-# stays the authority on any name both of them define. alias:safe still steps
-# aside for real commands, just not for plugin aliases (see alias:_taken).
+# This runs before .aliases, which is the authority on any name both define
 plugins:load
 
 source "${HOME}/.aliases"
 source "${HOME}/.completions"
-
-# --------------------------------- Runtime ---------------------------------- #
 
 [[ "${AUTOSTART_SSH_AGENT}" == "true" ]] && ssh:agent
 

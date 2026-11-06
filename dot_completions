@@ -1,30 +1,12 @@
-# Completions, autocompletion, and the ZLE widgets around them. Order matters
-# here, so read the notes before moving a block.
-
-# Homebrew prefix (HOMEBREW_PREFIX is already set by `brew shellenv` in .zshrc)
 local brew_share="${HOMEBREW_PREFIX:+${HOMEBREW_PREFIX}/share}"
 
-# One dump file, whichever branch below ends up running compinit. Naming it
-# here rather than letting each branch pick its own keeps both on the same
-# file. zsh-autocomplete reads this variable and keeps a value already set.
+# zsh-autocomplete reads this and keeps a value already set
 typeset -g _comp_dumpfile="${HOME}/.cache/zsh/compdump"
 
-# Let zsh-autocomplete own its fpath entries. Sourcing it below re-adds
-# Completions and z-async, so drop any copies inherited from a parent shell,
-# which may point at a version that no longer exists.
-#
-# zsh-completions is a Brewfile formula (180 definitions for tools Homebrew
-# does not complete itself, including mvn, flutter and scala). It goes first,
-# as the formula's own caveats prescribe, so these definitions win over any
-# same-named copy later on fpath.
-#
-# ~/.bun holds bun's own completion, a plain `#compdef bun` file. It belongs on
-# fpath rather than being sourced. That file ends in a `command -v compinit`
-# probe, which cannot see an autoloadable function that has not been loaded
-# yet, so sourcing it ran a full uncached compinit on every shell. That cost
-# 460 ms by itself, and left the completion system owned by something other
-# than zsh-autocomplete, which then deleted its dump and rebuilt from scratch
-# on every prompt for another 450 ms.
+# zsh-autocomplete re-adds its own entries when sourced, and copies inherited
+# from a parent shell may point at a version that no longer exists.
+# zsh-completions goes first, as its caveats prescribe. bun's file belongs on
+# fpath, because sourcing it runs a full uncached compinit on every shell.
 typeset -gU FPATH fpath
 fpath=(
   ${brew_share:+${brew_share}/zsh-completions}
@@ -32,30 +14,12 @@ fpath=(
   ${fpath:#*/zsh-autocomplete/(Completions|z-async)}
 )
 
-# Decide whether the dump is still good, then let compinit trust that answer.
-#
-# compinit's own freshness check globs every completion file on fpath, 1216 of
-# them across 47 directories here, and costs about 440 ms on every shell. -C
-# skips it, so the two tests below are what keep the dump honest, for well
-# under a millisecond.
-#
-#   Age. A tool installed today gets its completion tomorrow. The same 24-hour
-#   bound the mise, brew and plugin refreshes in .zshrc use. `^ms-0` drops a
-#   dump dated in the future (clock skew, restored backup), which `mh-24`
-#   alone reads as fresh forever. Not `ms+0`, which demands an age of at least
-#   a second and so throws away a dump written in this very second. Rebuilding
-#   costs 400 ms and resets the mtime, so a window plus two tabs opened
-#   together used to rebuild three times instead of once.
-#
-#   The fpath list. Editing the block above changes which directories compinit
-#   would read, and no age check notices that.
-#
-# Directory mtimes would catch a new tool the same day, but they are useless
-# here: eight Oh My Zsh plugins rewrite ~/.cache/oh-my-zsh/completions in the
-# background on every shell, so that directory is always newer than the dump.
-# The age test has to glob, and [[ ]] never does: inside it the qualifier is
-# just text and the test is always true. Assign to an array instead, the same
-# way run:daily does in .functions.
+# compinit -C skips a freshness check that costs about 440 ms per shell, so two
+# tests here decide when to rebuild the dump: its age, and the fpath list,
+# because no age check notices an edit to that list. `^ms-0` drops a dump dated
+# in the future, as in run:daily. Directory mtimes do not work, because plugins
+# rewrite ~/.cache/oh-my-zsh/completions on every shell. [[ ]] never globs, so
+# the age test assigns to an array.
 [[ -d ${_comp_dumpfile:h} ]] || mkdir -p ${_comp_dumpfile:h}
 local fpath_stamp="${_comp_dumpfile}.fpath"
 local -a fresh=( ${_comp_dumpfile}(N.mh-24^ms-0) )
@@ -65,14 +29,11 @@ if (( ! ${#fresh} )) || [[ ! -f $fpath_stamp || "$fpath" != "$(<$fpath_stamp)" ]
 fi
 
 if [[ -n "$brew_share" && -f "${brew_share}/zsh-autocomplete/zsh-autocomplete.plugin.zsh" ]]; then
-  # zsh-autocomplete runs compinit itself, from its first precmd, and its
-  # README asks that nothing else call it. Honor that: a foreign compinit makes
-  # the plugin drop the dump and rebuild it on every single shell.
+  # zsh-autocomplete runs compinit itself, and a foreign one makes it rebuild
+  # the dump on every shell
   zstyle ':autocomplete::compinit' arguments -C
 
-  # Kiro CLI compatibility. Keep zsh-autocomplete's manual widgets, but
-  # disable the async redraw loop that wipes Kiro's figterm inline
-  # suggestions.
+  # The async redraw loop wipes Kiro's figterm inline suggestions
   zstyle ':autocomplete:async' enabled no
 
   source "${brew_share}/zsh-autocomplete/zsh-autocomplete.plugin.zsh"
@@ -81,11 +42,7 @@ else
   compinit -C -d "$_comp_dumpfile"
 fi
 
-# Replay the compdef calls the plugin bundle queued before the completion system
-# existed (see the stub in plugins:load). With zsh-autocomplete installed these
-# land in its own compdef queue instead, which it flushes after running compinit
-# from its first precmd. Without it, the compinit above has already installed
-# the real compdef, so each entry runs right here.
+# With zsh-autocomplete these land in its own queue, flushed after its compinit
 if (( ${#COMPDEF_DEFERRED} )); then
   local deferred
   for deferred in "${COMPDEF_DEFERRED[@]}"; do
@@ -94,26 +51,14 @@ if (( ${#COMPDEF_DEFERRED} )); then
 fi
 unset COMPDEF_DEFERRED
 
-# Account names for the claude:* functions in .functions. An account is a
-# directory, so the completion reads them from there.
 _claude_accounts() {
   (( CURRENT == 2 )) && compadd -- "${HOME}"/.claude-accounts/*(N/:t)
 }
 compdef _claude_accounts claude:as claude:chrome claude:remove
 
-# Angular CLI autocompletion, from the wrapper the CLI generates itself.
-#
-# The hand-written version this replaces called `ng --get-yargs-completions`
-# and passed the raw output to `compadd`. yargs answers in `name:description`
-# form, so unquoted word splitting turned 17 commands into 161 candidates,
-# among them `support`, `for` and `an`, and `compadd` offered `add:Adds` as a
-# literal string. The generated wrapper sets COMP_CWORD, COMP_LINE and
-# COMP_POINT so yargs knows where the cursor is, and hands the reply to
-# `_describe`, which is the part that reads `name:description`.
-#
-# Generating it spawns Node, so keep it for a day on the same 24-hour stamp the
-# dump above uses. $SHELL is forced, because yargs emits the bash flavor unless
-# it sees a zsh $SHELL, and the header check rejects a truncated or bash reply.
+# Generating this spawns Node, so it is kept for a day. $SHELL is forced because
+# yargs emits the bash flavor otherwise, and the header check rejects a
+# truncated reply.
 if cmd:exists ng; then
   local ng_completion="${HOME}/.cache/zsh/ng-completion.zsh"
   local -a ng_fresh=( ${ng_completion}(N.mh-24^ms-0) )
@@ -122,12 +67,8 @@ if cmd:exists ng; then
        [[ "$(head -n 1 "${ng_completion}.new")" == "#compdef ng" ]]; then
       command mv -f "${ng_completion}.new" "$ng_completion"
     else
-      # Stamp the attempt even when it failed, the way run:daily does. The gate
-      # above is an age test on this file, so leaving it untouched means a
-      # broken ng respawns Node in front of every later prompt (1 to 2 s here,
-      # against a whole startup of about 1 s), and 2>/dev/null hides the reason.
-      # touch on a missing file leaves an empty one, which fails the -s test
-      # below, so nothing broken gets sourced.
+      # Stamp a failed attempt too, or a broken ng respawns Node before every
+      # prompt. An empty file fails the -s test below.
       command rm -f "${ng_completion}.new"
       command touch "$ng_completion"
     fi
@@ -135,28 +76,15 @@ if cmd:exists ng; then
   [[ -s "$ng_completion" ]] && source "$ng_completion"
 fi
 
-# zsh-autosuggestions, guarded in case it is not installed
 if [[ -n "$brew_share" ]]; then
   [[ -f "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] \
     && source "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh"
 fi
 
-# Shift+Tab opens the interactive menu.
-#
-# zsh-autocomplete binds Tab to `complete-word` and Shift+Tab to `expand-word`,
-# so neither reaches `menu-select`. This replaces the Shift+Tab binding with a
-# wrapper that does, after clearing zsh-autosuggestions' ghost text, which
-# otherwise gets committed into the buffer alongside the chosen completion.
-#
-# Not a Kiro workaround, despite what this comment used to say: `kiro-cli init
-# zsh pre` and `... post` contain no bindkey, `zle -N` or `zle -C` at all, and
-# Tab resolves to `complete-word` with Kiro installed and without it alike.
-#
-# This binds into the `main` keymap, which is the one actually in use.
-# zsh-autocomplete rebuilds `emacs` from a precmd hook afterwards and resets ^R
-# there to the stock incremental search, but it leaves `main` alone, so both
-# this binding and fzf's ^R survive. Verified on a real terminal. Querying
-# `bindkey -M emacs` instead of `-M main` gives a misleading answer.
+# zsh-autocomplete leaves no key on `menu-select`. The wrapper clears the
+# autosuggestion ghost text, which otherwise gets committed into the buffer. It
+# binds into `main`, because zsh-autocomplete rebuilds `emacs` from a precmd
+# hook.
 if (( $+widgets[menu-select] )); then
   _zsh_autocomplete_menu() {
     unset POSTDISPLAY
@@ -167,8 +95,7 @@ if (( $+widgets[menu-select] )); then
   bindkey '\e[Z' _zsh_autocomplete_menu
 fi
 
-# Syntax highlighting and history substring search wrap existing ZLE widgets,
-# so they must be sourced after every widget above is defined
+# These wrap existing ZLE widgets, so they come after every widget above
 if [[ -n "$brew_share" ]]; then
   [[ -f "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] \
     && source "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
@@ -177,7 +104,5 @@ if [[ -n "$brew_share" ]]; then
     && source "${brew_share}/zsh-history-substring-search/zsh-history-substring-search.zsh"
 fi
 
-# `local` outside a function is just `typeset`, so every name above would stay
-# in the interactive shell. This file is sourced from .zshrc, not called, so
-# clean them up explicitly.
+# `local` outside a function is `typeset`, and this file is sourced
 unset brew_share fpath_stamp fresh deferred ng_completion ng_fresh

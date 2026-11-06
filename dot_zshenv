@@ -1,19 +1,11 @@
-# Sourced by every zsh, interactive or not. Keep it to PATH essentials and to
-# values that non-interactive shells genuinely need. Anything interactive
-# belongs in .zshrc.
+# Sourced by every zsh, so anything interactive belongs in .zshrc
 
-# Collapse duplicate PATH entries (nested shells re-source this file)
+# Nested shells re-source this file
 typeset -gU PATH path
 
 # Set before /etc/zprofile, whose C.UTF-8 fallback would otherwise win in login shells
 export LANG="${LANG:-en_US.UTF-8}"
 
-# mise shims, so editors, LaunchAgents, and `zsh -c` scripts resolve the same
-# toolchain as an interactive shell (non-interactive shells never read .zshrc).
-# Interactive shells also run `mise activate zsh`, which prepends the resolved
-# tool directories ahead of these shims.
-#
-# This prepend does not survive a login shell: /etc/zprofile runs next and its
-# `path_helper -s` moves the entry to the end of PATH. .zprofile repeats the
-# prepend for that case.
+# This serves editors, LaunchAgents and `zsh -c` scripts, which never read
+# .zshrc. /etc/zprofile undoes it in login shells, so .zprofile repeats it.
 [[ -d "$HOME/.local/share/mise/shims" ]] && path=("$HOME/.local/share/mise/shims" $path)
