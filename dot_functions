@@ -1759,6 +1759,7 @@ claude:_link-shared() {
 # The unset list names what a shell or a parent Claude Code session passes down
 # that would take over from the account's own login or mark this launch as a
 # child of that session. Other session variables stay, since they do neither.
+# `command` because exec on its own would run the claude function instead.
 # Usage: claude:_run <home> <command> [args...]
 claude:_run() {
   local home="$1"; shift
@@ -1772,7 +1773,7 @@ claude:_run() {
       CLAUDE_CODE_PLUGIN_CACHE_DIR="${HOME}/.claude/plugins" \
       ANTHROPIC_CONFIG_DIR="${home}/anthropic" \
       BROWSER="${HOME}/.local/bin/claude-account-browser"
-    exec "$@"
+    exec command "$@"
   )
 }
 
@@ -1788,6 +1789,39 @@ claude:_chrome-state() {
   else
     print -r -- "no profile"
   fi
+}
+
+# Internal: print --fork-session when these claude arguments would reopen a
+# conversation another process holds. Claude Code lets that happen, and two writers
+# fork the transcript so that the next resume hides one side of it. A copy leaves
+# the original untouched. With no session named, --continue and the picker can land
+# on anything run in this directory, so any live session here counts. A session
+# given by name counts as none named, because only its id leads to an owner.
+# Usage: claude:_fork-live [claude args...]
+claude:_fork-live() {
+  emulate -L zsh -o extended_glob
+  local resuming holder
+  local -a sessions
+  while (( $# )); do
+    case "$1" in
+      --fork-session) return 0 ;;
+      -c|--continue|--from-pr|--from-pr=*) resuming=1 ;;
+      --resume=*) resuming=1 sessions+=( "${${1#--resume=}:t:r}" ) ;;
+      -r|--resume) resuming=1 sessions+=( "${${2:-}:t:r}" ) ;;
+    esac
+    shift
+  done
+  [[ -n "$resuming" ]] || return 0
+  sessions=( ${(M)sessions:#[0-9a-f](#c8)-[0-9a-f](#c4)-[0-9a-f](#c4)-[0-9a-f](#c4)-[0-9a-f](#c12)} )
+  holder="$("${HOME}/.claude/hooks/guard-live-sessions.sh" live "${PWD:A}" "${sessions[@]}" 2>/dev/null)" || return 0
+  log info "Continuing in a copy (--fork-session), because ${holder} holds a session here" >&2
+  print -r -- --fork-session
+}
+
+# The `claude` alias expands to this function, so plain claude cannot reopen a session
+# an account is running either. Without accounts it adds nothing.
+claude() {
+  command claude $(claude:_fork-live "$@") "$@"
 }
 
 # Run Claude Code as an account, with the flags of the `claude` alias. Arguments
@@ -1820,6 +1854,7 @@ claude:as() {
     flags+=( "--mcp-config=${HOME}/.claude.json" )
   fi
   [[ "$PWD" -ef "$HOME" ]] && flags+=( "--setting-sources=user,local" )
+  flags+=( $(claude:_fork-live "$@") )
   claude:_run "$home" ${=aliases[claude]:-claude} "${flags[@]}" "$@"
 }
 

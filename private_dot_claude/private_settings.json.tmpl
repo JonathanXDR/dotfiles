@@ -119,6 +119,11 @@
             "type": "command",
             "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/sonar-secrets/build-scripts/prompt-secrets.sh'",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/guard-live-sessions.sh'",
+            "timeout": 10
           }
         ]
       }
@@ -129,6 +134,22 @@
           {
             "type": "command",
             "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/warn-denied-tools.sh'",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/guard-live-sessions.sh'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/guard-live-sessions.sh'",
             "timeout": 10
           }
         ]
