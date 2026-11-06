@@ -146,6 +146,15 @@ check "skills is a real directory" test -d "$home/skills" -a ! -L "$home/skills"
 check "each skill is linked" same "$(readlink "$home/skills/alpha")" "$HOME/.claude/skills/alpha"
 check "synced skills stay per account" test ! -e "$home/skills/synced"
 check "hidden skill entries are not linked" test ! -e "$home/skills/.trash"
+for entry in agent-memory file-history memory paste-cache plans projects session-env tasks teams uploads usage-data; do
+  check "${entry} is shared" same "$(readlink "$home/$entry")" "$HOME/.claude/$entry"
+  check "${entry} survives cleanup of empty directories" test -f "$HOME/.claude/$entry/.keep"
+done
+check "prompt history is shared" same "$(readlink "$home/history.jsonl")" "$HOME/.claude/history.jsonl"
+check "the login metadata stays per account" test -f "$home/.claude.json" -a ! -L "$home/.claude.json"
+check "live sessions are not linked" test ! -L "$home/sessions"
+check "a throwaway cache is not linked" test ! -L "$home/image-cache"
+check "an absent plugin directory is not created" test ! -e "$HOME/.claude/security"
 check "the sign-in ran as the account" has "$(grep -l 'argv=auth login' "${calls}"/call.* | xargs cat)" "cfg=${home}"
 check "the sign-in goes to the account browser" has "$(grep -l 'argv=auth login' "${calls}"/call.* | xargs cat)" "browser=$HOME/.local/bin/claude-account-browser"
 check "the extension page opens in the account's profile" has "$(<"${calls}/open")" "[--profile-directory=Profile claude-work][https://claude.ai/chrome]"
@@ -227,6 +236,36 @@ claude:as work
 check "a new skill appears on the next launch" test -e "$home/skills/gamma"
 check "a removed skill disappears" test ! -e "$home/skills/beta" -a ! -L "$home/skills/beta"
 check "a new shared directory appears" same "$(readlink "$home/agents")" "$HOME/.claude/agents"
+mkdir -p "$HOME/.claude/security"
+claude:as work
+check "plugin state is shared once it exists" same "$(readlink "$home/security")" "$HOME/.claude/security"
+
+# ------------------------------- Shared record ----------------------------- #
+
+mkdir -p "$home/projects/-work-app/memory"
+print -r -- '- from work' > "$home/projects/-work-app/memory/MEMORY.md"
+print -r -- '{"display":"from work"}' >> "$home/history.jsonl"
+claude:as broken
+check "memory written by one account reaches the primary" test -f "$HOME/.claude/projects/-work-app/memory/MEMORY.md"
+check "memory written by one account reaches another" same "$(<"${accounts}/broken/projects/-work-app/memory/MEMORY.md")" "- from work"
+check "prompt history reaches another account" same "$(<"${accounts}/broken/history.jsonl")" '{"display":"from work"}'
+claude:as work
+check "a launch keeps the existing prompt history" same "$(<"$HOME/.claude/history.jsonl")" '{"display":"from work"}'
+
+command rm -rf "$HOME/.claude/plans"
+claude:as work
+check "a deleted state directory returns at the next launch" test -d "$home/plans/."
+
+command rm "$home/tasks"
+mkdir "$home/tasks"
+print -r -- own > "$home/tasks/own"
+warning="$(claude:as work 2>&1)"
+check "a real state directory is kept" test -f "$home/tasks/own"
+check "a real state directory gets a warning" has "$warning" "$home/tasks, which other accounts cannot see"
+command rm -rf "$home/tasks"
+warning="$(claude:as work 2>&1)"
+check "a removed state directory relinks" same "$(readlink "$home/tasks")" "$HOME/.claude/tasks"
+check "a shared state directory gets no warning" same "$warning" ""
 print -r -- '{"hooks":{"changed":true}}' > "$HOME/.claude/settings.json.new"
 mv "$HOME/.claude/settings.json.new" "$HOME/.claude/settings.json"
 check "a chezmoi-style replace reaches the account" has "$(<"$home/settings.json")" changed
@@ -236,7 +275,9 @@ print -r -- own > "$home/skills/own/SKILL.md"
 command rm "$home/CLAUDE.md"
 print -r -- '# own' > "$home/CLAUDE.md"
 claude:as work
+warning="$(claude:as work 2>&1)"
 check "an account's own instructions survive" same "$(<"$home/CLAUDE.md")" "# own"
+check "an account's own instructions get no warning" same "$warning" ""
 check "an account's own skill survives" test -f "$home/skills/own/SKILL.md"
 check "other accounts keep the shared file" same "$(readlink "${accounts}/broken/CLAUDE.md")" "$HOME/.claude/CLAUDE.md"
 command rm "$home/CLAUDE.md"
@@ -386,6 +427,7 @@ check "removal signs out first" test ! -f "${calls}/trashed-work/.signed-in"
 check "removal moves the directory to the Trash" same "$(<"${calls}/trash")" "$home"
 check "removal leaves the other account alone" test -f "${accounts}/broken/.signed-in"
 check "removal leaves the shared configuration alone" test -f "$HOME/.claude/settings.json"
+check "removal leaves memory and history for the others" test -f "$HOME/.claude/projects/-work-app/memory/MEMORY.md"
 command rm -rf "${accounts}/fresh/sessions"
 print -r -- y | claude:remove fresh >/dev/null
 check "an account with no sessions directory can be removed" test ! -e "${accounts}/fresh"
