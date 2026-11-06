@@ -141,6 +141,8 @@ Dotfiles/
 │   │   ├── private_executable_block-git-destructive.sh  # PreToolUse guard, blocks git commands that discard work
 │   │   ├── private_executable_check-commit-message.sh   # PreToolUse guard, validates the commit message
 │   │   ├── private_executable_block-path-access.sh.tmpl # PreToolUse guard, blocks configured paths on every tool
+│   │   ├── private_executable_guard-live-sessions.sh    # Session guard, keeps two processes off one conversation
+│   │   ├── private_executable_lock-memory-writes.sh     # Tool guard, makes concurrent memory writes exclusive
 │   │   ├── private_executable_scan-written-secrets.sh   # PostToolUse guard, sonar secrets scan of written files
 │   │   └── private_executable_warn-denied-tools.sh      # SessionStart notice, project settings that withdraw core tools
 │   └── private_plugins/                                 # ~/.claude/plugins/ (0700)
@@ -401,13 +403,15 @@ Info:    Fix or drop each entry above in .chezmoidata/skills.toml, or run skills
 
 ### Claude Code Accounts
 
-Extra accounts are optional. Plain `claude` stays the primary account in `~/.claude`, and only `claude:add` creates anything. An extra account is a directory under `~/.claude-accounts` that `claude:as` passes as `CLAUDE_CONFIG_DIR`, the mechanism [the authentication docs](https://code.claude.com/docs/en/authentication) name for staying signed in to several accounts. Claude Code then keeps `.claude.json`, session history and everything else below in that directory, and keys the keychain item on its path.
+Extra accounts are optional. Plain `claude` stays the primary account in `~/.claude`, and only `claude:add` creates anything. An extra account is a directory under `~/.claude-accounts` that `claude:as` passes as `CLAUDE_CONFIG_DIR`, the mechanism [the authentication docs](https://code.claude.com/docs/en/authentication) name for staying signed in to several accounts. Claude Code then keeps `.claude.json` and the rest of what belongs to a login in that directory, and keys the keychain item on its path. Everything else links back to `~/.claude`, so every account has the same configuration and the same record of past work: any account can read the memory of a project and continue a session another account started.
 
 ```text
-~/.claude/                     primary account, and the shared configuration chezmoi manages
+~/.claude/                     primary account, and everything the accounts share
 ├── settings.json  <────────┐
 ├── CLAUDE.md      <────────┤
-├── commands/      <────────┤  one symlink per entry, for the entries that exist
+├── commands/      <────────┤  one symlink per entry
+├── projects/      <────────┤  transcripts and auto memory
+├── history.jsonl  <────────┤  prompt history
 ├── skills/<name>  <────────┤
 └── plugins/       <──┐     │
                       │     │
@@ -415,23 +419,42 @@ Extra accounts are optional. Plain `claude` stays the primary account in `~/.cla
 ├── settings.json  ───┼─────┤
 ├── CLAUDE.md      ───┼─────┤
 ├── commands       ───┼─────┤
+├── projects       ───┼─────┤
+├── history.jsonl  ───┼─────┤
 ├── skills/<name>  ───┼─────┘
-├── skills/synced/    │        claude.ai skills of this account
+├── skills/synced/    │        claude.ai skills of this login
 ├── .claude.json      │        login metadata, trust, per-project state
-├── projects/         │        transcripts and auto memory
-└── plugins/          │        not created, CLAUDE_CODE_PLUGIN_CACHE_DIR points up
+└── plugins/synced/   │        sync state of this login, CLAUDE_CODE_PLUGIN_CACHE_DIR points up
 ```
 
-| Component                                 | How an account gets it                            | Reason                                                                                                                        |
-| ----------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `settings.json`                           | Symlink, required before any launch               | It registers the guard hooks. Claude Code writes through one symlink hop and keeps the link                                   |
-| `CLAUDE.md`, `commands`, and other config | Symlink for each entry that exists in `~/.claude` | A real file or directory in the account stays, which is how an account keeps its own version                                  |
-| Skills                                    | One symlink per skill, refreshed at each launch   | `skills/synced` holds the claude.ai skills of the signed-in account, so the directory itself stays per account                |
-| Hooks                                     | Nothing needed                                    | `settings.json` names them by absolute path                                                                                   |
-| Plugins                                   | `CLAUDE_CODE_PLUGIN_CACHE_DIR=~/.claude/plugins`  | One store with the same absolute paths for every account. `enabledPlugins` comes with `settings.json`                         |
-| User MCP servers                          | `--mcp-config=~/.claude.json` at launch           | They live in `.claude.json`, which stays per account. The flag reads only `mcpServers`, so there is no copy to keep in sync   |
-| Login, MCP OAuth, plugin secrets          | Per account                                       | One keychain item per config directory. `ANTHROPIC_CONFIG_DIR` moves Console logins, which `CLAUDE_CONFIG_DIR` does not cover |
-| History, memory, trust, global config     | Per account                                       | All of it sits in the account's `projects/`, `history.jsonl` or `.claude.json`, next to the state that has to stay separate   |
+| Component                                 | How an account gets it                                          | Reason                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings.json`                           | Symlink, required before any launch                             | It registers the guard hooks. Claude Code writes through one symlink hop and keeps the link                                                                                                                                                                                       |
+| `CLAUDE.md`, `commands`, and other config | Symlink for each entry that exists in `~/.claude`               | A real file or directory in the account stays, which is how an account keeps its own version                                                                                                                                                                                      |
+| Skills                                    | One symlink per skill, refreshed at each launch                 | `skills/synced` holds the claude.ai skills of the signed-in account, so the directory itself stays per account                                                                                                                                                                    |
+| Hooks                                     | Nothing needed                                                  | `settings.json` names them by absolute path                                                                                                                                                                                                                                       |
+| Plugins                                   | `CLAUDE_CODE_PLUGIN_CACHE_DIR=~/.claude/plugins`                | One store with the same absolute paths for every account. `enabledPlugins` comes with `settings.json`, and `security` is a symlink because the security-guidance plugin keeps its venv there                                                                                      |
+| User MCP servers                          | `--mcp-config=~/.claude.json` at launch                         | They live in `.claude.json`, which stays per account. The flag reads only `mcpServers`, so there is no copy to keep in sync                                                                                                                                                       |
+| Login, MCP OAuth, plugin secrets          | Per account                                                     | One keychain item per config directory. `ANTHROPIC_CONFIG_DIR` moves Console logins, which `CLAUDE_CONFIG_DIR` does not cover                                                                                                                                                     |
+| Memory, transcripts, prompt history       | Symlink for each entry, created in `~/.claude` first if missing | `projects`, `history.jsonl`, `agent-memory`, `memory`, `file-history`, `paste-cache`, `plans`, `session-env`, `tasks`, `teams`, `uploads` and `usage-data`. A real directory in the account gets a warning at every launch, because that account would work apart from the others |
+| Trust, global config                      | Per account                                                     | They sit in `.claude.json` with the login metadata. Claude Code rewrites that file constantly, so it can be neither linked nor kept in sync from outside                                                                                                                          |
+| Live processes, login caches              | Per account                                                     | `sessions`, `daemon`, `jobs`, `chrome`, `telemetry`, `cache` and `plugins/synced` belong to a running process or to the login                                                                                                                                                     |
+
+Claude Code's cleanup deletes empty directories, which would leave a running session on a dangling link, so each shared state directory holds a `.keep` file. `image-cache` stays per account: cleanup wipes it, and transcripts embed the images anyway.
+
+**Concurrency.** Sharing a directory is not the same as sharing it safely, and Claude Code 2.1.318 has no cross-process lock for any of this. Everything below comes from running the real binary with sessions forced to collide.
+
+| Shared state               | What Claude Code does on its own                                                                            | What protects it                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Memory, through `Edit`     | Reads, changes and rewrites with no lock. 42 of 157 edits reported success and were lost                    | `lock-memory-writes.sh` holds a lock from `PreToolUse` to `PostToolUse`. 0 of 720 lost                    |
+| Memory, through `Write`    | Refuses if the session read the file and it changed since, but a `Write` with no earlier `Read` replaces it | The same hook refuses `Write` over a non-empty memory file, so `Edit` merges instead                      |
+| Two new memories, one name | Every writer reports success and the last one wins                                                          | The same lock and refusal: exactly one wins and the other is told to use `Edit`                           |
+| One live conversation      | Allows it. Both append and fork the transcript, and the next resume follows only the newest branch          | `claude:as` and plain `claude` add `--fork-session`, `guard-live-sessions.sh` covers `/resume` in-session |
+| Separate conversations     | One file per session, so 24 parallel launches gave 24 valid transcripts                                     | Nothing needed                                                                                            |
+| Prompt history             | Appends one line per prompt, and 3 identities typing at once kept all 24                                    | Nothing needed                                                                                            |
+| Crash during a write       | Writes through a temp file and a rename, so 19,011 reads during writes saw no torn file                     | Nothing needed. A lock left by a dead session is taken over at once                                       |
+
+Both hooks do nothing unless `~/.claude-accounts` exists, so one account alone keeps Claude Code's own behavior. All worktrees of a repository share one memory directory, while transcripts stay per worktree: `--continue` stays in its worktree, and `--resume <id>` or `Ctrl+W` in the picker reach the others. A running session sees a changed `MEMORY.md` on its next turn, and new topic files when it reads them.
 
 Everything `claude:as` sets exists only in the environment of the launched process and its children. `claude:_run` starts the command from a subshell and unsets what a shell or parent session passes down that would replace the account's login or mark the launch as a child session, so a launch from inside another session runs as a session of its own on the account's own login. Launching an account therefore changes neither the calling shell nor the login of another account. It does not stop a running session from doing so, as the first limit below explains.
 
@@ -449,6 +472,15 @@ Everything `claude:as` sets exists only in the environment of the launched proce
 - `settings.json` is one file for every account. `/model`, the first-run theme picker and most `/config` options write it, so a change from any account applies to all of them, and none of it reaches the template by itself. A few `/config` options stay in the account's `.claude.json`, and tips, reduced motion and output style write the project's `.claude/settings.local.json`.
 - A plugin installed or updated from any account changes the store for all of them, and `plugins/data/<id>` and `plugins/store` are shared. Two installs at the same moment can lose a registry entry, as they can between two sessions on one account.
 - Claude Code has no cross-process lock for `settings.json`, so two simultaneous writes keep only the last, also as on one account.
+- `/resume` lists every session of a project, whichever account ran it, and resuming sends that transcript to the API under the current login.
+- The memory lock covers Claude Code's file tools only. A Bash command or an editor writing to a memory file bypasses it. Appending with `>>` is still safe, a rewrite is not.
+- A lock holder that stays alive but silent for 5 seconds loses the lock, which is what lets a call denied by another hook recover. A write held up longer than that, such as one waiting on a permission prompt, is no longer exclusive.
+- `/resume` inside a running session cannot fork, so it warns and blocks the first prompt, and `/branch` continues in a copy. The block adds a line to the transcript. If the owner made a turn after that session opened and never writes again, the next resume follows the blocked branch, and the owner's last turns stay in the `.jsonl` file without appearing in the conversation.
+- Starting Claude Code some other way than `claude:as` or `claude` in zsh skips the fork, so such a launch gets the same warning and block.
+- Claude Code offers no way to refuse an edit to a source file another session changed in the same instant. Two sessions in one working tree can still overwrite each other, which is why a session starting there is told to use `--worktree`. `/rewind` restores files from the session's own checkpoints, also over what another session wrote since.
+- Reading and writing through the links needs the alias's `--dangerously-skip-permissions`. In any other permission mode, Claude Code judges the link target as a sensitive file outside its own config directory and asks every time, or denies it with `-p` ([#98044](https://github.com/anthropics/claude-code/issues/98044)).
+- Transcripts do not record the account. A session on an extra account states its account in its starting context, which stays in the transcript, and a session without that note ran on the primary.
+- `cleanupPeriodDays` applies to the shared store from every account, so a cleanup started by any account deletes old sessions for all of them.
 - `claude mcp list` shows only the account's own servers, because the shared ones arrive through the flag. `claude mcp add` from an account stays in that account.
 - From a directory under `$HOME`, Claude Code also reads `~/.claude/CLAUDE.md` and `~/.claude/rules` as project files, so an account's own `CLAUDE.md` adds to the shared one there instead of replacing it.
 - From `$HOME` itself Claude Code would also read `~/.claude/settings.json` as project settings and write a project row for every enabled plugin into the shared registry. Those rows outlast the session, so `claude:as` passes `--setting-sources=user,local` there. A session started in `$HOME` therefore reads no project source: `~/CLAUDE.md`, `~/.mcp.json` and the `CLAUDE.md` files, rules and skills of directories below it do not load, with no warning. `/fork` and `/tui` also refuse, blaming launch flags you did not type, while `/branch` still works. Starting in the project directory avoids all of this.

@@ -177,7 +177,9 @@ claude:chrome work       # Open the account's Chrome profile
 claude:remove work       # Sign out and move the account to the Trash
 ```
 
-Every account uses the same settings, instructions, hooks, skills, plugins, and MCP servers, so you keep editing them in one place. That goes both ways: a setting changed from any account, `/model` included, applies to all of them. Logins, history, and memory stay separate.
+Every account shares one setup and one record of past work: settings, instructions, hooks, skills, plugins, MCP servers, project memory, session history, and prompt history. Any account can continue where another stopped, with `claude:as work --continue` or `--resume`, and memory written by one reaches the others. That goes both ways: a setting changed from any account, `/model` included, applies to all of them. Only what belongs to a login stays separate, which is the sign-in, its Chrome profile, and the trust dialog.
+
+Accounts can run at the same time, and hooks keep concurrent memory writes from overwriting each other. Reopening a conversation that is still running continues in a copy. For parallel edits to the same code, give each account a worktree with `claude:as work --worktree <name>`.
 
 Start an account in the project itself. A session started in `$HOME` skips the `CLAUDE.md` files, rules, and skills of the projects below it.
 
