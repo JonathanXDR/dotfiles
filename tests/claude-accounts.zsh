@@ -1,10 +1,7 @@
 #!/bin/zsh -f
-# Regression tests for the claude:* account functions in dot_functions.
-#
 # Run with `zsh -f tests/claude-accounts.zsh`. HOME is a throwaway directory and
 # stubs stand in for claude, open and trash, so nothing here can reach a real
-# login, keychain item or browser. The stub records its arguments and the
-# environment it was started with, which is what the account functions control.
+# login, keychain item or browser.
 
 repo="${0:A:h:h}"
 tmp="$(mktemp -d)"
@@ -29,7 +26,7 @@ chmod +x "$HOME/.local/bin/claude-account-browser"
 
 cat > "${stubs}/claude" <<'STUB'
 #!/bin/zsh -f
-# One file per call. auth subcommands keep a marker in the config directory.
+# auth subcommands keep a marker in the config directory
 out="$(mktemp "${CALLS}/call.XXXXXX")"
 {
   print -r -- "argv=$*"
@@ -100,18 +97,15 @@ same() { [[ "$1" == "$2" ]] || { print -r -- "  expected: $2"; print -r -- "  ac
 has() { [[ "$1" == *"$2"* ]] || { print -r -- "  missing '$2' in: $1"; return 1; }; }
 hasnt() { [[ "$1" != *"$2"* ]] || { print -r -- "  unexpected '$2' in: $1"; return 1; }; }
 
-# The stub writes one file per call. These clear, read and count them.
 reset_calls() { command rm -f "${calls}"/call.*(N) "${calls}/open"; }
 last_call() { cat "${calls}"/call.*(om[1]); }
 call_count() { local -a c=( "${calls}"/call.*(N) ); print -r -- ${#c}; }
-
-# --------------------------------- Names ---------------------------------- #
 
 for bad in '' '../x' 'a/b' 'Upper' '-x' '.' '..' 'a b' 'a.b'; do
   check "claude:add rejects '${bad}'" fails claude:add "$bad"
 done
 check "a rejected name creates nothing" test ! -e "$accounts"
-# The directory has to exist, or -d rejects these paths before any name check.
+# The directory has to exist, or -d rejects these paths before any name check
 mkdir -p "$accounts"
 check "claude:as rejects a traversal" fails claude:as ../.claude
 check "claude:chrome rejects a traversal" fails claude:chrome ../.claude
@@ -129,8 +123,6 @@ check "a missing claude creates no account" test ! -e "$accounts/nope"
 check "claude:add needs one argument" fails claude:add
 check "claude:as needs an account" fails claude:as
 check "sourcing leaves the primary alone" same "${CLAUDE_CONFIG_DIR-<unset>}" "<unset>"
-
-# ---------------------------------- Add ----------------------------------- #
 
 reset_calls
 STUB_EMAIL=work@example.com STUB_UUID=uuid-work claude:add work >/dev/null
@@ -170,8 +162,6 @@ check "a failed sign-in reports failure" fails env STUB_LOGIN_FAILS=1 zsh -fc "s
 check "a failed sign-in keeps the account for a retry" test -d "${accounts}/broken"
 STUB_EMAIL=broken@example.com STUB_UUID=uuid-broken claude:add broken >/dev/null
 check "a retry finishes the setup" test -f "${accounts}/broken/.signed-in"
-
-# ---------------------------------- Launch --------------------------------- #
 
 for name in "${inherited[@]}"; do
   export "${name}=from-parent"
@@ -227,8 +217,6 @@ claude:as work
 check "a missing primary file means no flag" hasnt "$(last_call)" "--mcp-config"
 mv "$HOME/.claude.json.keep" "$HOME/.claude.json"
 
-# ------------------------------- Propagation ------------------------------- #
-
 mkdir -p "$HOME/.agents/skills/gamma" "$HOME/.claude/agents"
 ln -s "$HOME/.agents/skills/gamma" "$HOME/.claude/skills/gamma"
 command rm "$HOME/.claude/skills/beta"
@@ -239,8 +227,6 @@ check "a new shared directory appears" same "$(readlink "$home/agents")" "$HOME/
 mkdir -p "$HOME/.claude/security"
 claude:as work
 check "plugin state is shared once it exists" same "$(readlink "$home/security")" "$HOME/.claude/security"
-
-# ------------------------------- Shared record ----------------------------- #
 
 mkdir -p "$home/projects/-work-app/memory"
 print -r -- '- from work' > "$home/projects/-work-app/memory/MEMORY.md"
@@ -284,8 +270,6 @@ command rm "$home/CLAUDE.md"
 claude:as work
 check "a removed override relinks" same "$(readlink "$home/CLAUDE.md")" "$HOME/.claude/CLAUDE.md"
 
-# ---------------------------------- Guards --------------------------------- #
-
 command rm "$home/settings.json"
 print -r -- '{}' > "$home/settings.json"
 reset_calls
@@ -310,8 +294,6 @@ check "missing shared settings block the launch" fails claude:as work
 check "missing settings never reach claude" same "$(call_count)" 0
 mv "$HOME/.claude/settings.keep" "$HOME/.claude/settings.json"
 
-# ------------------------------- Concurrency ------------------------------- #
-
 reset_calls
 for i in {1..8}; do
   claude:as work -p "w$i" &
@@ -323,7 +305,7 @@ check "work launches kept their account" same "$(cat "${calls}"/call.*(.) | grep
 check "broken launches kept their account" same "$(cat "${calls}"/call.*(.) | grep -c "^cfg=${accounts}/broken$")" 8
 check "parallel launches kept the settings link" test "$home/settings.json" -ef "$HOME/.claude/settings.json"
 
-# Launches race to create the same links, and losing that race must not stop one.
+# Launches race to create the same links, and losing that race must not stop one
 mkdir -p "$HOME/.agents/skills/delta" "${accounts}/racing"
 ln -s "$HOME/.agents/skills/delta" "$HOME/.claude/skills/delta"
 reset_calls
@@ -335,8 +317,6 @@ check "racing first launches all ran" same "$(call_count)" 12
 check "racing launches created the settings link" test "${accounts}/racing/settings.json" -ef "$HOME/.claude/settings.json"
 check "racing launches created the skill links" same "$(readlink "${accounts}/racing/skills/delta")" "$HOME/.claude/skills/delta"
 command rm -rf "${accounts}/racing"
-
-# ---------------------------------- Listing -------------------------------- #
 
 print -r -- '{"mcpServers":{},"oauthAccount":{"emailAddress":"me@example.com","organizationName":"Mine","accountUuid":"uuid-me"}}' > "$HOME/.claude.json"
 listing="$(claude:accounts 2>&1)"
@@ -368,8 +348,6 @@ cp "$accounts/fresh/.claude.json" "$accounts/third/.claude.json"
 check "every duplicate is flagged" has "$(claude:accounts 2>&1)" "Detected third and (primary) on one claude.ai account"
 command rm -rf "$accounts/third"
 
-# ---------------------------------- Chrome --------------------------------- #
-
 reset_calls
 claude:chrome work https://example.com/
 check "a URL opens in the account's profile" same "$(<"${calls}/open")" "[-na][Google Chrome][--args][--profile-directory=Profile claude-work][https://example.com/]"
@@ -399,8 +377,6 @@ check "claude:accounts finds every helper in a snapshot" hasnt "$listing" "comma
 reset_calls
 zsh -fc "source ${(q)snapshot}; setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL; claude:as work -p snapshot" &>/dev/null
 check "claude:as works from a snapshot" has "$(last_call)" "cfg=${home}"
-
-# ---------------------------------- Remove --------------------------------- #
 
 mkdir -p "$home/sessions"
 print -r -- '{}' > "$home/sessions/$$.json"
@@ -432,8 +408,6 @@ command rm -rf "${accounts}/fresh/sessions"
 print -r -- y | claude:remove fresh >/dev/null
 check "an account with no sessions directory can be removed" test ! -e "${accounts}/fresh"
 
-# ---------------------------- Memory write lock ---------------------------- #
-
 hooks="$HOME/.claude/hooks"
 mkdir -p "$hooks" "$accounts/mem" "$HOME/.claude/projects/-app/memory"
 for name in lock-memory-writes guard-live-sessions; do
@@ -446,7 +420,7 @@ linked="$accounts/mem/projects/-app/memory"
 lock="${memory}/.write-lock"
 template="${repo}/private_dot_claude/private_settings.json.tmpl"
 
-# These run from this shell, so $$ is the session a hook sees as its parent.
+# These run from this shell, so $$ is the session a hook sees as its parent
 memory_hook() {
   jq -n --arg e "$1" --arg t "$2" --arg i "$3" --arg p "$4" \
     '{hook_event_name: $e, tool_name: $t, tool_use_id: $i, tool_input: {file_path: $p}}' \
@@ -502,8 +476,7 @@ check "a stuck holder loses the lock" memory_hook PreToolUse Edit t11 "${memory}
 check "the waiter took over" same "$(readlink "$lock")" "t11 $$"
 memory_hook PostToolUse Edit t11 "${memory}/MEMORY.md"
 
-# Four sessions, each its own process, doing the read-modify-write the lock has to
-# make exclusive. Without the lock these lose lines almost every run.
+# Without the lock these sessions lose lines almost every run
 cat > "${tmp}/session" <<'SESSION'
 #!/bin/bash
 event() {
@@ -529,7 +502,8 @@ wait "${writers[@]}"
 check "no concurrent update is lost" same "$(grep -c '^- ' "${memory}/race.md")" 32
 check "the race leaves no lock" test ! -L "$lock"
 
-# Every session sees the same stale lock at once, so all of them try to take it over.
+# Every session sees the same stale lock at once, so all of them try to take it
+# over
 print -r -- '# index' > "${memory}/takeover.md"
 for attempt in 1 2 3 4 5 6; do
   ln -s "gone ${dead}" "$lock"
@@ -562,15 +536,13 @@ check "an unwritable store is left alone" memory_hook PreToolUse Edit t13 "${tmp
 check "an unwritable store does not spin" test $(( SECONDS - waited )) -lt 3
 chmod 700 "${tmp}/locked/.claude/agent-memory/x"
 
-# ------------------------------ Live sessions ------------------------------ #
-
 owners="$HOME/.claude/session-owners"
 guard="${hooks}/guard-live-sessions.sh"
 session_hook() {
   jq -n --arg e "$1" --arg s "$2" --arg c "${3:-/work}" '{hook_event_name: $e, session_id: $s, cwd: $c}' | "$guard"
 }
 owner_record() { printf '%s\n' "$2" "${5-$(ps -o lstart= -p "$2")}" "$3" "$4" > "${owners}/$1"; }
-# Not through $(...), whose subshell would be a different parent for the hook.
+# Not through $(...), whose subshell would be a different parent for the hook
 session_quiet() { session_hook "$@" > "${tmp}/hook.out"; [[ ! -s "${tmp}/hook.out" ]]; }
 
 check "a new session stays quiet" session_quiet SessionStart s1
@@ -646,8 +618,6 @@ reset_calls
 ( cd "${tmp}/here" && claude:_run "$accounts/mem" claude --continue >/dev/null )
 check "claude:_run runs the binary, not the claude function" hasnt "$(last_call)" "--fork-session"
 kill "$live" 2>/dev/null
-
-# -------------------------------- No accounts ------------------------------ #
 
 solo="${tmp}/solo"
 mkdir -p "${solo}/.claude/hooks" "${solo}/.claude/projects/-app/memory"

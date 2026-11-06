@@ -1,29 +1,21 @@
 #!/bin/bash
-# SessionStart, UserPromptSubmit and SessionEnd guard: keeps two processes off one
-# conversation. Accounts share their transcripts, so any of them can reopen a session
-# another one is running. Claude Code does not stop that: both append to one transcript
-# and fork it, and the next resume follows only the newest branch, so the other branch
-# looks lost even though it is still on disk.
+# Accounts share transcripts, so one can reopen a session another is running.
+# Both then fork the transcript, and the next resume follows only the newest
+# branch.
 #
-# claude:as and plain claude avoid this at launch with --fork-session, by asking this
-# script through `live`. That leaves /resume inside a running session, which no launcher
-# sees. SessionStart cannot refuse it (continue:false is ignored there), so it warns and
-# the first prompt is blocked. A blocked prompt still writes one line to the transcript,
-# and that line can hide newer turns until the owner writes again, so blocking is the
-# fallback and forking the rule.
-#
-# Each session records its owner in ~/.claude/session-owners/<session id>: the pid, its
-# start time, the account and the directory. The start time tells a live owner from a
-# pid the system reused after a crash.
+# claude:as and plain claude fork at launch by asking `live`, which leaves
+# /resume inside a running session. SessionStart cannot refuse (continue:false
+# is ignored there), so it warns and the first prompt is blocked. The block's
+# own transcript line can hide newer turns until the owner writes again, so
+# blocking is only the fallback.
 #
 # Usage: guard-live-sessions.sh live <directory> [session id...]
-#        Prints the owner and succeeds if another process holds one of those sessions,
-#        or with none named, if another process runs in that directory.
+#        Succeeds if another process holds a named session, or with none named,
+#        runs in the directory
 
 owners=$HOME/.claude/session-owners
 
-# Accounts are optional, and without them Claude Code behaves as it always did. A hook
-# has to exit 0 here, or Claude Code would report an error on every event.
+# A hook has to exit 0 here, or Claude Code would report an error on every event
 if [ ! -d "$HOME/.claude-accounts" ]; then
   [ "${1:-}" = live ] && exit 1
   exit 0
@@ -33,13 +25,15 @@ read_owner() {
   { read -r pid && read -r start && read -r account && read -r directory; } <"$1"
 } 2>/dev/null
 
-# read drops the padding ps puts around the time, as it does for the recorded one.
+# read drops the padding ps puts around the time, as it does for the recorded
+# one
 started() {
   read -r time <<<"$(ps -o lstart= -p "$1" 2>/dev/null)"
   printf '%s' "$time"
 }
 
-# ps can come back empty in a sandbox. kill -0 still rules out a dead owner then.
+# The start time tells a live owner from a reused pid, and ps can be empty in a
+# sandbox
 owner_alive() {
   kill -0 "$pid" 2>/dev/null || return 1
   current=$(started "$pid")
@@ -90,7 +84,7 @@ if read_owner "$file" && [ "$pid" != "$PPID" ] && owner_alive; then
   exit 0
 fi
 
-# A rename, so that a reader never sees half a record.
+# A rename, so a reader never sees half a record
 if ! read_owner "$file" || [ "$pid" != "$PPID" ]; then
   name=${CLAUDE_CONFIG_DIR##*/}
   printf '%s\n' "$PPID" "$(started "$PPID")" "${name:-primary}" "$cwd" >"$file.$$"
@@ -99,8 +93,7 @@ fi
 
 [ "$event" = SessionStart ] || exit 0
 
-# Worktrees are the supported way to edit in parallel, so say so while it is still cheap.
-# The same pass drops the records crashed sessions left behind.
+# The same pass drops the records crashed sessions left behind
 neighbours=''
 for other in "$owners"/*; do
   [ "$other" = "$file" ] && continue
@@ -116,8 +109,7 @@ warning=''
 [ -n "$neighbours" ] &&
   warning="Other sessions are working in this directory: ${neighbours#, }. Edits to the same files can conflict, so use --worktree for parallel work."
 
-# Transcripts do not record the account, but this context stays in them, so a conversation
-# that moved between accounts still shows which ones worked on it.
+# Transcripts do not record the account, but this context stays in them
 context=''
 [ -n "${CLAUDE_CONFIG_DIR:-}" ] && context="This session runs as the Claude Code account ${CLAUDE_CONFIG_DIR##*/}."
 

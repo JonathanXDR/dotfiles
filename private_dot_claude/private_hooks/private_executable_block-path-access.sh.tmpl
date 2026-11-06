@@ -1,46 +1,29 @@
 #!/bin/bash
-# PreToolUse guard: keep Claude out of the paths listed in .chezmoidata.toml as
-# claude_blocked_paths. It is registered for every tool, because Bash is not the
-# only one that runs a shell command: Monitor, PowerShell, Tmux and REPL do too,
-# and an MCP server can carry a path under any key it likes.
+# Registered for every tool, because Monitor, PowerShell, Tmux and REPL run
+# shell commands too, and an MCP server can carry a path under any key.
 #
-# The same list also renders into permissions.deny in settings.json. That layer
-# reaches what no hook can, the @ mentions in a prompt, but it is not always
-# active. A managed policy at /Library/Application Support/ClaudeCode/
-# managed-settings.json setting allowManagedPermissionRulesOnly drops every
-# non-managed permission rule, deny included. On this machine even a bare deny
-# of Read failed to withdraw the tool, so this hook is the only enforcement and
-# does not assume otherwise.
+# permissions.deny gets the same list and reaches @ mentions, but a managed
+# policy setting allowManagedPermissionRulesOnly drops it, so this hook assumes
+# it is the only enforcement.
 #
-# Matching is on path text, never on command names. The shell offers far too
-# many names to enumerate: hundreds of aliases resolve to readers (invisible=cat,
-# tldr=less), zsh reads a file with no command at all via `< file`, and builtins
-# read one with `while read -r l; do :; done < file`. The path is the only thing
-# every read has in common.
+# Matching is on path text, because far too many commands, aliases and builtins
+# can read a file.
 #
-# Accepted misses, in the spirit of the other guards:
-#   - a reader rooted at an ancestor of a blocked path, such as
-#     `find ~ -name id_rsa -exec cat {} \;`, which cannot be caught without
-#     failing every search that starts from the home directory
+# Accepted misses:
+#   - a reader rooted at an ancestor of a blocked path, which cannot be caught
+#     without failing every search from the home directory
 #   - writing a script that reads the path, then running the script
 #   - `git cat-file -p <sha>`, which names a blob hash rather than a path
 #   - mdfind, which answers questions about content without opening the file
 #   - paths assembled at runtime from variables or escape sequences
-#   - a project setting disableAllHooks, which turns off every hook here
-#
-# There is no override. Widening the list is an edit to .chezmoidata.toml
-# followed by chezmoi apply.
+#   - a project setting disableAllHooks
 
 payload=$(cat)
 
-# Every string in tool_input is a candidate path, at any nesting depth and
-# inside arrays, so a tool carrying its path under paths[], files[] or args.path
-# is covered without naming each key. The free-text fields are deleted first at
-# every level, or prose that merely mentions a blocked path could not be written
-# or described. Grep's pattern is a content regex rather than a path, so it goes
-# too, while Glob's pattern is a path pattern and stays.
-# A jq failure falls back to the raw payload, the same coarse over-blocking
-# stand-in the missing-jq branch uses.
+# Every string in tool_input is a candidate path, so a tool's key does not
+# matter. Free-text fields go first, or prose mentioning a blocked path could
+# not be written. Grep's pattern is a content regex, while Glob's is a path
+# pattern and stays. A jq failure over-blocks on the raw payload.
 if command -v jq >/dev/null 2>&1; then
   subject=$(printf '%s' "$payload" | jq -r '
     . as $t
@@ -57,9 +40,8 @@ else
 fi
 [ -n "$subject" ] || exit 0
 
-# Blocked paths, baked in at chezmoi apply time. Single-quoted with any embedded
-# apostrophe escaped, so an entry is data rather than something the shell
-# expands, and one apostrophe cannot render a hook that will not parse.
+# Single-quoted with apostrophes escaped, so an entry is data and cannot break
+# the hook
 blocked=(
 {{- range .claude_blocked_paths }}
   {{ printf "'%s'" (replace "'" "'\\''" .) }}
@@ -67,17 +49,10 @@ blocked=(
 )
 [ ${#blocked[@]} -gt 0 ] || exit 0
 
-# The list and the subject are fed on stdin, separated by a control character,
-# rather than through awk -v: the subject is routinely multi-line (a Grep
-# carries a path and a glob, a Bash command carries several lines) and the awk
-# on macOS rejects a newline inside a -v value outright, which would fail the
-# guard open.
-#
-# One pass normalises the subject and every entry into the same space: quotes
-# and backslashes removed, so a path split across quotes still reads as one
-# path, $HOME, ${HOME} and ~/ expanded, lowercased because this volume is APFS
-# and case-insensitive by default, repeated slashes collapsed, and /./ and
-# /../ resolved textually.
+# On stdin, because the subject is routinely multi-line and macOS awk rejects a
+# newline in a -v value, which would fail the guard open. norm() lowercases
+# because APFS is case-insensitive by default, and strips quotes so a path split
+# across them still reads as one path.
 hit=$({ printf '%s\n' "${blocked[@]}"; printf '\034\n'; printf '%s\n' "$subject"; } |
   awk -v home="$HOME" '
   function norm(s,   prev) {
@@ -88,18 +63,15 @@ hit=$({ printf '%s\n' "${blocked[@]}"; printf '\034\n'; printf '%s\n' "$subject"
     gsub(/~\//, H "/", s)
     gsub(/\/\/+/, "/", s)
     while (s ~ /\/\.\//) gsub(/\/\.\//, "/", s)
-    # Collapse "<segment>/.." pairs. A segment must be free of whitespace, or
-    # the class would span the gap between two words and a later /../ would
-    # swallow the blocked path together with everything before it. ".." is
-    # excluded too, so ../../ is left alone instead of eating a level.
+    # A segment must be free of whitespace, or a later /../ would swallow the
+    # blocked path together with everything before it. ".." is excluded, so
+    # ../../ does not eat a level.
     do {
       prev = s
       sub(/\/(\.[^.\/[:space:]][^\/[:space:]]*|[^.\/[:space:]][^\/[:space:]]*)\/\.\.\//, "/", s)
     } while (s != prev)
     return s
   }
-  # Escape the regex metacharacters of a bare name, so that .env is not a
-  # pattern that also matches "cat env".
   function esc(s,   out, i, ch) {
     out = ""
     for (i = 1; i <= length(s); i++) {
@@ -110,11 +82,8 @@ hit=$({ printf '%s\n' "${blocked[@]}"; printf '\034\n'; printf '%s\n' "$subject"
   }
   BEGIN { H = tolower(home); sub(/\/+$/, "", H); reading = 1 }
   reading { if ($0 == "\034") reading = 0; else entry[++n] = $0; next }
-  # Splice backslash-newline continuations like the shell does, so a
-  # continuation inside a path cannot split it. This happens here rather than
-  # with a bash parameter substitution, which is super-quadratic in bash 3.2:
-  # a command with a few hundred continuations stalled the hook for half a
-  # minute, and a longer one for long enough to time out and fail open.
+  # Here, because a bash substitution is super-quadratic in 3.2, and a long
+  # command would time out and fail open
   {
     if (pend != "") { $0 = pend $0; pend = "" }
     if ($0 ~ /\\$/) { pend = substr($0, 1, length($0) - 1); next }
@@ -126,12 +95,9 @@ hit=$({ printf '%s\n' "${blocked[@]}"; printf '\034\n'; printf '%s\n' "$subject"
     for (i = 1; i <= n; i++) {
       needle = norm(entry[i])
       if (needle == "") continue
-      # An entry naming a path matches as a plain substring, which also catches
-      # a glob the shell has not expanded yet, since `cat <dir>/*` still spells
-      # out the directory. A bare name has to sit between path-component
-      # boundaries, or .env would fire on every process.env and .aws on every
-      # jq .awsRegion. A dot counts as a closing boundary but not an opening
-      # one, so .env still covers .env.local while .envelope is left alone.
+      # A path entry is a plain substring, which also catches an unexpanded
+      # glob. A bare name needs component boundaries, and a dot closes a
+      # component without opening one.
       if (index(needle, "/") > 0) {
         if (index(view, needle) > 0) { print entry[i]; exit }
       } else if (match(view, "(^|[^[:alnum:]._-])" esc(needle) "($|[^[:alnum:]_-])")) {

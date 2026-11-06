@@ -158,10 +158,8 @@
   },
   "enabledPlugins": {
 {{- /* frontend-design, mattpocock-skills and skill-creator are off because
-       .chezmoidata/skills.toml already declares their skills for every agent.
-       Two copies of a skill both reach the model, and the plugin's copy is
-       pinned to whatever the marketplace last published rather than tracking
-       upstream. */}}
+       skills.toml already declares their skills, and two copies of a skill
+       both reach the model. */}}
     "agent-sdk-dev@claude-plugins-official": true,
     "atomic-agents@claude-plugins-official": true,
     "aws-serverless@claude-plugins-official": true,

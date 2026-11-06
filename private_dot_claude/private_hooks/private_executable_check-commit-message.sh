@@ -1,12 +1,7 @@
 #!/bin/bash
-# PreToolUse guard: validate the commit message Claude is about to create.
-# Checks the Conventional Commits subject shape (lowercase type) and rejects
-# Claude attribution trailers. Bodies and footers stay unrestricted so
-# repository conventions keep working. The check binds only the agent: it
-# fails open whenever the message cannot be extracted from the command
-# (editor-based commits, exotic quoting), and CLAUDE_COMMIT_OK=1 as the
-# command's first word acknowledges a repository whose documented commit
-# convention intentionally differs.
+# Bodies and footers stay unrestricted so repository conventions keep working.
+# Fails open when the message cannot be extracted, such as with editor-based
+# commits or exotic quoting.
 
 payload=$(cat)
 
@@ -16,30 +11,20 @@ else
   exit 0
 fi
 
-# Splice backslash-newline continuations like the shell does: removed
-# entirely, so a continuation inside a word cannot split the subcommand. awk
-# does it because bash 3.2 rebuilds the whole string on every match, so a few
-# hundred continuations cost the guard most of a second and every doubling
-# after that multiplies it by eight.
+# Splice continuations so one inside a word cannot split the subcommand. In awk,
+# because a bash substitution is super-quadratic in 3.2, and a long command
+# would time out and fail open.
 cmd=$(printf '%s\n' "$cmd" | awk '
   { if (pend != "") { $0 = pend $0; pend = "" }
     if ($0 ~ /\\$/) { pend = substr($0, 1, length($0) - 1); next }
     print }
   END { if (pend != "") print pend }')
 
-# Gate on a copy with heredoc bodies dropped and quoted spans emptied: the
-# command's structure, not message or documentation text, decides whether
-# this is a git commit invocation. Quotes are consumed left to right,
-# whichever kind opens first, mirroring the shell. Extraction below still
-# reads the real quotes from $cmd.
-# One left-to-right pass per line: quoted spans are dropped with correct
-# pairing, heredoc markers (quoted or not) survive as <<TAG, a here-string
-# <<< or a << inside quotes is not a marker, and arithmetic $(( )) spans are
-# consumed whole so their shifts never look like markers. Skipped lines are
-# held. If the terminator never appears the parse was wrong, and the held
-# lines are re-emitted so a live command is never silently dropped. With
-# raw=1 the heredoc bodies are still dropped but each surviving line is
-# emitted with its quotes intact.
+# The command's structure, not message text, decides whether this is a commit.
+# Arithmetic $(( )) spans are consumed whole so their shifts never look like
+# markers. If the terminator never appears the parse was wrong, so the held
+# lines are re-emitted and a live command is never dropped. With raw=1 surviving
+# lines keep their quotes.
 stripper='
   function stripline(s,   out, i, c, c2, q, t, n) {
     out = ""; q = ""; n = length(s); i = 1
@@ -88,13 +73,13 @@ stripper='
   END { if (skip != "") for (j = 1; j <= h; j++) print (raw ? held[j] : stripline(held[j])) }'
 scan=$(printf '%s\n' "$cmd" | awk "$stripper")
 
-# Only inspect actual git commit invocations. Backslash-escaped spaces stay
-# inside a token, so "git -C My\ Repo commit" is still one prefix chain.
+# Backslash-escaped spaces stay inside a token, so "git -C My\ Repo commit" is
+# one prefix
 gitpre='(^|[^[:alnum:]_./-])git([[:space:]]+-([^[:space:]]|\\ )+([[:space:]]+(\\ |[^-[:space:]])([^[:space:]]|\\ )*)?)*[[:space:]]+'
 printf '%s\n' "$scan" | grep -Eq "${gitpre}commit([^[:alnum:]_-]|$)" || exit 0
 
-# head -1 pins the override to the command's first word: a token at the start
-# of a later line of a multi-line command does not disarm the guard.
+# Only the first line counts, so a token on a later line cannot disable the
+# guard
 if printf '%s\n' "$cmd" | head -1 | grep -Eq '^[[:space:]]*(env[[:space:]]+)?CLAUDE_COMMIT_OK=1([[:space:]]|$)'; then
   exit 0
 fi
@@ -109,27 +94,17 @@ REASON
   exit 2
 }
 
-# Every commit invocation of a compound command, one per line, quote-aware so
-# a ; & or | inside message text does not truncate a segment. Extracted from
-# the heredoc-less body view, so a commit example inside the message text of
-# a heredoc-fed commit is not read as another invocation. Falls back to the
-# whole command when quoting defeats the match (quoted -C paths). Built here
-# rather than beside $scan so the two gates above skip its second pass over
-# the command.
+# One commit invocation per line, quote-aware so a ; & or | in message text does
+# not truncate a segment. Falls back to the whole command when quoting defeats
+# the match.
 body=$(printf '%s\n' "$cmd" | awk -v raw=1 "$stripper")
 segs=$(printf '%s\n' "$body" | grep -oE "${gitpre}commit((\"[^\"]*\")|('[^']*')|[^;&|\"'])*")
 [ -n "$segs" ] || segs=$cmd
 
-# msgline: the pattern occupies the start of a message line. Inside a commit
-# segment that means an opening quote or a \n escape, in the whole command a
-# physical line start (heredoc bodies, real newlines in quotes). The gap
-# admits non-alphanumeric prefixes like the robot emoji of the canonical
-# Claude Code footer. Prose mentions mid-subject and trailer strings aimed at
-# other commands (git log --grep=...) stay allowed. trailerflag: git commit
-# --trailer attaches a trailer without quotes and accepts = like :, checked
-# against the quote-stripped scan so a quoted prose mention of the flag
-# cannot match, then against $cmd for the value that quoting may hide. Keys
-# match case-insensitively, as git itself treats trailers.
+# msgline matches the pattern at the start of a message line, so prose mentions
+# stay allowed. The gap admits prefixes like the robot emoji of the Claude Code
+# footer. trailerflag checks $scan so a quoted mention cannot match, then $cmd
+# for a value quoting may hide.
 gap="[^[:alnum:]\"']*"
 msgline() {
   printf '%s\n' "$segs" | grep -Eiq "([\"']|\\\\n|[[:space:]]-[a-zA-Z]*m[= ])${gap}$1" ||
@@ -149,10 +124,7 @@ if msgline 'Generated with \[Claude Code\]'; then
   block "the message contains a Generated with Claude Code line."
 fi
 
-# Validate the subject of every commit invocation: its first -m/--message
-# argument (quoted either way, or a bare word), or the first line of a
-# heredoc that feeds the commit. Empty means unparseable for that
-# invocation, which fails open.
+# An empty subject means that invocation is unparseable, which fails open
 sq="'"
 while IFS= read -r seg; do
   [ -n "$seg" ] || continue
@@ -161,10 +133,8 @@ while IFS= read -r seg; do
     head -1)
   subject=$(printf '%s\n' "$marg" |
     sed -E "s/^[[:space:]]*(-[a-zA-Z]*m|--message)[= ]*//; s/\\\\ / /g; s/^[\"$sq]//; s/[\"$sq]\$//")
-  # Two heredocs opened on one line make the next physical line the first
-  # heredoc's body, not the commit message: fail open instead of misreading.
-  # The check runs on the scan so << in message text or heredoc bodies (C++
-  # streams in a quoted diff) does not count.
+  # Two heredocs on one line make the next line the first heredoc's body, so
+  # fail open
   if [ -z "$subject" ] && ! printf '%s\n' "$scan" | grep -Eq '<<.*<<'; then
     subject=$(printf '%s\n' "$cmd" |
       sed -nE "\\#${gitpre}commit[^;&|]*<<-?[[:space:]]*[\"']?[A-Za-z_]#{n;s/^[[:space:]]*//;p;q;}")

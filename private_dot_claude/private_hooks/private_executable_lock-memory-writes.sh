@@ -1,23 +1,13 @@
 #!/bin/bash
-# PreToolUse, PostToolUse and PostToolUseFailure guard: keeps memory writes from
-# concurrent sessions from overwriting each other. Accounts share one memory directory
-# per project, and Claude Code reads, changes and rewrites a file with no lock of its
-# own. Four sessions editing MEMORY.md at once silently lost 42 of 157 edits on 2.1.318,
-# each reported as a success.
-#
-# The lock is held from PreToolUse to PostToolUse, so one session's read and write cannot
-# overlap another's. Edit reads the file inside that window, so two edits both land. It
-# only covers Claude Code's file tools: a Bash command writing to memory never gets here.
-#
-# Write replaces the whole file, and Claude Code refuses it only when the session read
-# the file earlier and it changed since. A Write with no earlier Read goes through and
-# discards everything in the file, which is how two sessions picking one filename lose
-# a memory, so it is refused here and Edit does the job.
+# Claude Code reads, changes and rewrites a file with no lock of its own, so
+# sessions sharing a memory directory silently lose updates. Edit reads the file
+# inside this lock, so two edits both land. Claude Code refuses a Write only if
+# the session read the file and it changed since, so a Write with no earlier
+# Read would discard the file. Bash writes to memory never get here.
 
 payload=$(cat)
 
-# Accounts are optional, and without them Claude Code behaves as it always did. Without
-# jq nothing can read the tool call, and failing open only costs the protection.
+# Without accounts Claude Code keeps its own behavior
 [ -d "$HOME/.claude-accounts" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
@@ -31,8 +21,6 @@ case "$path" in
   *) exit 0 ;;
 esac
 
-# Accounts reach the store through a linked directory, so every spelling of a file finds
-# the same lock.
 store=${path%/*}
 mkdir -p "$store" 2>/dev/null
 [ -w "$store" ] || exit 0
@@ -44,14 +32,13 @@ if [ "$event" != PreToolUse ]; then
   exit 0
 fi
 
-# The lock is a symlink because creating one is atomic and carries its owner, so no reader
-# can find a lock without one. A hook denying this call fires no PostToolUse, which leaves
-# the lock behind while the session lives, so a waiter takes over one that sits unchanged
-# for 5 seconds. A write takes milliseconds. Past 20 seconds of real contention the call
-# is refused rather than let through, because a retry costs less than a lost memory.
+# The lock is a symlink, because creating one is atomic and stores its owner. A
+# hook denying this call fires no PostToolUse, so a waiter takes over a lock
+# unchanged for 5 seconds. Past 20 seconds this refuses the call, because a
+# retry costs less than a lost memory.
 #
-# Takeovers go one at a time. Two waiters that both saw the same stale lock could
-# otherwise each remove it, and the second would delete the lock the first just took.
+# Takeovers go one at a time, or a second waiter could delete the lock the first
+# just took.
 seen=''
 since=$SECONDS
 until ln -s "$owner" "$lock" 2>/dev/null; do
