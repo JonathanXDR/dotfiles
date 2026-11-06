@@ -1,26 +1,11 @@
-# Language runtimes and global CLI packages, managed by mise
-# (https://mise.jdx.dev).
-#
-# This file is plain (no .tmpl), so chezmoi symlinks it rather than rendering a
-# copy. ~/.config/mise/config.toml and the repo source are one file, so
-# `mise use -g` edits the tracked file directly and the two can never drift
-# apart. Global config is implicitly trusted, so no `mise trust` step is
-# needed.
-#
-# Installed by run_onchange_after_06-install-mise-tools on every apply that
-# changes this file, and refreshed once a day by `mise:update` (see .zshrc).
+# Plain, not .tmpl, so chezmoi symlinks it and `mise use -g` edits the tracked
+# file
 
 [tools]
 
-# Runtimes. Every language whose idiomatic version files are enabled below needs
-# a baseline pinned here, even when the system already ships one. A tool with no
-# version installed gets no shim, so a project pin falls through to the system
-# binary instead of being honored. status.missing_tools below reports that case,
-# but the baseline is what makes mise generate the shim in the first place.
-#
-# One rule for all of them: track the LTS line where the language publishes one,
-# otherwise track latest. `mise:update` moves them forward daily within that
-# rule.
+# Every language with idiomatic version files enabled below needs a baseline
+# here. A tool with no version installed gets no shim, so a project pin falls
+# through to the system.
 node = "lts"
 java = "lts"
 python = "latest"
@@ -28,11 +13,8 @@ ruby = "latest"
 bun = "latest"
 pnpm = "latest"
 
-# Global CLI packages. Bare names resolve through mise's curated registry, which
-# picks the best backend (a native binary beats an npm package) and carries any
-# build approvals the package needs. `npm:` is spelled out where the registry
-# has no entry (skilld) or maps the name to a different tool (`cf` is Cloud
-# Foundry there, not the Cloudflare CLI).
+# `npm:` is spelled out where the registry has no entry (skilld) or maps the
+# name to another tool (`cf` is Cloud Foundry there)
 claude-code = "latest"
 codex = "latest"
 copilot = "latest"
@@ -47,46 +29,25 @@ ni = "latest"
 
 [settings]
 
-# Read the version files projects already ship, so `cd` switches runtimes
-# without every repo needing its own mise.toml. mise disables these by default.
 idiomatic_version_file_enable_tools = ["node", "python", "ruby", "java"]
 
-# package.json counts as an idiomatic Node.js file, and its `devEngines.runtime`
-# pin would otherwise take over repos that never opted into mise. Limit
-# detection to .nvmrc and .node-version.
+# A package.json `devEngines.runtime` pin would otherwise take over repos that
+# never opted into mise
 idiomatic_version_file_disable_files = ["node:package.json"]
 
-# Stop an unresolvable shim from falling through to the next binary of that name
-# on PATH. Homebrew's node stays installed as a hard dependency of eslint,
-# prettier, and vercel, so the default fallback would quietly run the wrong
-# major. A pinned version that is merely missing still installs first, because
-# not_found_auto_install keeps its default of true. This setting only decides
-# what happens once resolution has failed.
-#
-# mise's own documentation suggests pairing this with not_found_auto_install =
-# false. Do not. With auto-install off, `mise activate` drops the shims
-# directory from PATH, which is the one thing .zshenv and .zprofile exist to put
-# there.
+# Homebrew's node stays installed as a dependency, so the fallback would quietly
+# run the wrong major. mise's docs suggest pairing this with
+# not_found_auto_install = false, but `mise activate` then drops the shims
+# directory from PATH.
 not_found_system_fallback = false
 
-# Report a configured tool that has no version installed at all. mise's default
-# warns only once some other version of that tool exists, so it stays quiet in
-# the case that matters most. A project pinning a tool this machine has never
-# installed gets no shim, and PATH decides instead.
+# The default stays quiet for a tool with no version installed at all
 status.missing_tools = "always"
 
-# Resolve bare Java versions through Temurin rather than mise's default vendor,
-# Oracle's OpenJDK builds. Oracle stops updating each line six months after it
-# ships, so openjdk-25 ends at 25.0.2 and the `java = "lts"` pin above freezes
-# on a build that no longer gets security patches. The freeze is silent: with no
-# newer openjdk-25 to find, the pin still looks current to mise. Temurin keeps
-# maintaining the line, so the same pin now resolves to 25.0.4.
-#
-# Temurin narrows the freeze without closing it. Adoptium sometimes respins a
-# build at the same patch level, turning 25.0.4+7 into 25.0.4+101, and mise
-# compares versions by semver precedence, which ignores everything after the
-# plus. The two builds compare equal, so `mise upgrade` calls the pin current
-# and holds the older one until the next real patch. `mise latest java@lts`
-# against `mise current java` shows the gap. Uninstalling the stale build makes
-# `lts` resolve forward again.
+# Oracle stops updating each line after six months, which silently freezes
+# `java = "lts"` on an unpatched build. Adoptium can still respin a build at one
+# patch level, and mise's semver compare ignores what follows the plus, so
+# `mise upgrade` holds the older one. `mise latest java@lts` against
+# `mise current java` shows the gap, and uninstalling the stale build moves
+# `lts` forward.
 java.shorthand_vendor = "temurin"
