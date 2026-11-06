@@ -203,12 +203,10 @@
   "java.configuration.detectJdksAtStart": false,
   "java.configuration.runtimes": [
     {{- $runtimes := list }}
-    {{- /* Homebrew: glob for the installed openjdk@11 version */ -}}
     {{- range $path := reverse (glob "/opt/homebrew/Cellar/openjdk@11/*/libexec/openjdk.jdk/Contents/Home") }}
       {{- $runtimes = append $runtimes (dict "name" "JavaSE-11" "path" $path) }}
       {{- break }}
     {{- end }}
-    {{- /* VS Code extension: fixed paths, no version in the directory */ -}}
     {{- $ext := joinPath .chezmoi.homeDir "Library/Application Support/Code/User/globalStorage/pleiades.java-extension-pack-jdk/java" }}
     {{- if stat (joinPath $ext "17") }}
       {{- $runtimes = append $runtimes (dict "name" "JavaSE-17" "path" (joinPath $ext "17")) }}
@@ -216,7 +214,6 @@
     {{- if stat (joinPath $ext "21") }}
       {{- $runtimes = append $runtimes (dict "name" "JavaSE-21" "path" (joinPath $ext "21")) }}
     {{- end }}
-    {{- /* System JDK: temurin-25, the default runtime when installed */ -}}
     {{- range $path := reverse (glob "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home") }}
       {{- $runtimes = append $runtimes (dict "name" "JavaSE-25" "path" $path "default" true) }}
       {{- break }}
@@ -267,11 +264,9 @@
     "FIG_NEW_SESSION": "1",
     "Q_NEW_SESSION": "1"
   },
-  {{- /* The JDK profiles come from the runtimes detected above, so none can pin
-         a JDK this machine does not have. The default profile pins no JAVA_HOME
-         at all: the extension pack's ZDOTDIR wrapper re-exports the profile's
-         JAVA_HOME after sourcing ~/.zshrc, so a value here would override the
-         JDK mise selects in every VS Code terminal. */}}
+  {{- /* The default profile pins no JAVA_HOME, because the extension pack's
+         ZDOTDIR wrapper re-exports it after sourcing ~/.zshrc, overriding the
+         JDK mise selects. */}}
   "terminal.integrated.profiles.osx": {
     "zsh": {
       "path": "zsh",
