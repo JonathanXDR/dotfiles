@@ -1,7 +1,5 @@
-# Processes the runaway watcher (~/.local/bin/runaway-watch) never flags as
-# busy. One glob per line, matched against the process name as `ps -o ucomm`
-# prints it (at most 16 characters). Stopped groups and GPU load are always
-# reported. Expected long, heavy work belongs here, a helper that spins does not.
+# One glob per line, matched against the process name as `ps -o ucomm` prints it
+# (at most 16 characters)
 
 # Virtual machines (UTM, Apple Virtualization)
 QEMULauncher

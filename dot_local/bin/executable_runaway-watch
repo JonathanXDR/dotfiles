@@ -1,28 +1,16 @@
 #!/bin/zsh -f
-# Notify about processes that stay busy or stopped for too long.
+# launchd runs this every two minutes. It never kills or signals anything.
 #
-# launchd runs this every two minutes (com.jonathan-russ.runaway-watch). Each
-# run takes one `ps` sample, compares every process's CPU time with the last
-# sample, and keeps its state under ~/.cache/runaway-watch. It never kills or
-# signals anything. It flags three things:
-#
-#   busy     One process averaging RUNAWAY_CPU_SHARE percent of a core (80)
-#            for RUNAWAY_CPU_MINUTES (15). A stuck process holds one core,
-#            about a tenth of this machine, which overall CPU alerts miss.
-#   stopped  A process group suspended for RUNAWAY_STOP_MINUTES (30), the way
-#            the old run:daily jobs stopped on the terminal.
-#   gpu      Overall GPU load at RUNAWAY_GPU_SHARE percent (80) for
-#            RUNAWAY_GPU_MINUTES (15). GPU time per process needs root, so
-#            this one names the busiest CPU processes instead.
+#   busy     One process averaging RUNAWAY_CPU_SHARE percent of a core for
+#            RUNAWAY_CPU_MINUTES. A stuck process holds one core, which overall
+#            CPU alerts miss.
+#   stopped  A process group suspended for RUNAWAY_STOP_MINUTES.
+#   gpu      Overall GPU load at RUNAWAY_GPU_SHARE percent for
+#            RUNAWAY_GPU_MINUTES. GPU time per process needs root, so this names
+#            the busiest CPU processes instead.
 #
 # CPU time is tracked per PID, and macOS keeps no total for a parent's exited
 # children, so a loop that keeps starting short-lived commands is not flagged.
-#
-# Each finding is announced once as a notification and logged to
-# ~/Library/Logs/runaway-watch.log. While it lasts it is also listed in
-# ~/.cache/runaway-watch/alerts, which every new terminal shell prints
-# (runaway:alerts in .functions), because a Focus mode files notifications away
-# without a banner. Expected heavy work goes in ~/.config/runaway-watch/ignore.
 #
 # Usage: runaway-watch          take one sample (what launchd runs)
 #        runaway-watch status   show what is flagged or building up right now
@@ -30,8 +18,7 @@
 emulate -L zsh
 setopt extended_glob
 zmodload zsh/datetime
-# launchd starts this without a locale and a terminal has one. The same one
-# for both keeps ps output and the cleaned-up process names identical.
+# launchd starts this without a locale, and ps output has to match a terminal's
 export LC_ALL=C
 
 typeset state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/runaway-watch"
@@ -42,16 +29,13 @@ typeset -i cpu_share=${RUNAWAY_CPU_SHARE:-80} gpu_share=${RUNAWAY_GPU_SHARE:-80}
 typeset -i cpu_after=$(( ${RUNAWAY_CPU_MINUTES:-15} * 60 ))
 typeset -i stop_after=$(( ${RUNAWAY_STOP_MINUTES:-30} * 60 ))
 typeset -i gpu_after=$(( ${RUNAWAY_GPU_MINUTES:-15} * 60 ))
-# Two samples taken closer together than this give a noisy rate, as when the
-# command is run by hand right after launchd ran it.
+# Samples closer together than this give a noisy rate
 typeset -i min_interval=${RUNAWAY_MIN_INTERVAL:-30}
-# Samples further apart than three launchd intervals had a gap between them,
-# usually sleep, which is not observed load. Busy and GPU streaks start over.
+# Samples further apart had a gap, usually sleep, which is not observed load
 typeset -i max_gap=${RUNAWAY_MAX_GAP:-360}
 
 typeset -i now=$EPOCHSECONDS
 
-# "42 min" or "3 h 05 min"
 duration() {
   local -i s=$1
   if (( s >= 3600 )); then
@@ -62,8 +46,8 @@ duration() {
 }
 
 # ps prints CPU time as [[dd-]hh:]mm:ss.cc, with minutes allowed past 59.
-# Centiseconds, so that a difference over a number of seconds reads directly
-# as percent of one core.
+# Centiseconds, so that a difference over a number of seconds reads directly as
+# percent of one core.
 centiseconds() {
   local t=$1 d=0 h=0 m s
   [[ "$t" == *-* ]] && { d=${t%%-*}; t=${t#*-} }
@@ -117,8 +101,8 @@ local -a ignore=()
 
 local stamp
 [[ -r "${state_dir}/stamp" && -r "${state_dir}/procs" ]] && stamp=$(<"${state_dir}/stamp")
-# A stamp in the future means the clock was set back. Starting over beats
-# skipping every run until the clock catches up.
+# A stamp in the future means the clock was set back, so start over rather than
+# skip runs
 local -i prev_time=0
 [[ "$stamp" == <-> ]] && (( stamp <= now )) && prev_time=$stamp
 local -i elapsed=$(( now - prev_time ))
@@ -137,8 +121,8 @@ if (( prev_time > 0 && ! gap )); then
   done
 fi
 
-# Stopped process groups, per pgid: stopped since, whether it was announced.
-# A gap does not reset these, because a group stays suspended through sleep.
+# Per pgid: stopped since, whether it was announced. A group stays suspended
+# through sleep, so a gap does not reset these.
 local -A stop_since stop_note
 if (( prev_time > 0 )) && [[ -r "${state_dir}/stopped" ]]; then
   for line in "${(@f)$(<"${state_dir}/stopped")}"; do
@@ -163,11 +147,9 @@ for line in "${(@f)$(ps -A -o pid=,pgid=,stat=,time=,ucomm=)}"; do
   (( pid == $$ )) && continue
   centiseconds $f[4]; cpu=$REPLY
 
-  # A streak starts at cpu_share and survives dips down to half of it. A
-  # loaded machine (load average 162 the day the old shells spun) hands even
-  # a stuck process less than a full core at times, and a single low sample
-  # must not restart the clock. Whether to flag it is decided on the average
-  # over the streak.
+  # A streak survives dips to half of cpu_share, because a loaded machine hands
+  # even a stuck process less than a full core at times. The average over the
+  # streak decides.
   since=0 since_cpu=0 note=0
   if (( prev_time > 0 )) && [[ -n "${prev_cpu[$pid]}" && "${prev_name[$pid]}" == "$name" ]]; then
     share=$(( (cpu - prev_cpu[$pid]) / elapsed ))
@@ -293,7 +275,6 @@ else
   gpu_since=0 gpu_note=0 gpu_sum=0 gpu_n=0
 fi
 
-# Write the new state, each file replaced in one rename
 print -r -- $now >| "${state_dir}/stamp"
 print -rl -- $procs_out >| "${state_dir}/procs.new" && mv -f "${state_dir}/procs.new" "${state_dir}/procs"
 print -rl -- $stopped_out >| "${state_dir}/stopped.new" && mv -f "${state_dir}/stopped.new" "${state_dir}/stopped"
