@@ -1673,12 +1673,23 @@ claude:_home() {
   print -r -- "$home"
 }
 
-# Internal: link an account to the shared configuration in ~/.claude. This runs
-# before every launch, so a skill or agent added since the last one appears, and
-# it skips whatever is already right.
+# Internal: link an account to what every account shares in ~/.claude, which is
+# the configuration and the record of past work, so that any account can read
+# the memory of a project and continue a session another account started. This
+# runs before every launch, so a skill or agent added since the last one
+# appears, and it skips whatever is already right.
+#
+# The state directories are created here so that a link exists before the first
+# session needs it. Claude Code's cleanup deletes an empty directory, which would
+# leave a running account on a dangling link, so each one holds a .keep file.
+#
+# What stays per account is tied to a login or a running process: .claude.json,
+# the keychain item, skills/synced, sessions, daemon, jobs, chrome and telemetry.
 #
 # A real file or directory in the way stays, which is how an account keeps its
-# own version. settings.json is the exception: it registers the guard hooks, and
+# own version of the configuration. A real state directory means that account
+# works apart from the others, so that gets a warning at every launch.
+# settings.json is the exception: it registers the guard hooks, and
 # with --dangerously-skip-permissions those are the only guard, so no session
 # may start without it. Each link is one hop on purpose, because Claude Code
 # writes settings through a single symlink and replaces a second one with a
@@ -1696,12 +1707,23 @@ claude:_home() {
 claude:_link-shared() {
   emulate -L zsh
   local home="$1" shared="${HOME}/.claude" entry
+  local -a config=( settings.json CLAUDE.md agents commands keybindings.json loop.md output-styles rules security themes workflows )
+  local -a state=( agent-memory file-history memory paste-cache plans projects session-env tasks teams uploads usage-data )
   local -a missing stale
 
-  for entry in settings.json CLAUDE.md agents commands keybindings.json output-styles rules themes workflows; do
+  for entry in "${state[@]}"; do
+    mkdir -p "${shared}/${entry}" && : >> "${shared}/${entry}/.keep" || return 1
+  done
+  : >> "${shared}/history.jsonl" || return 1
+
+  for entry in "${config[@]}" "${state[@]}" history.jsonl; do
     [[ -e "${shared}/${entry}" ]] || continue
     [[ "${home}/${entry}" -ef "${shared}/${entry}" ]] && continue
-    [[ -e "${home}/${entry}" && ! -L "${home}/${entry}" ]] && continue
+    if [[ -e "${home}/${entry}" && ! -L "${home}/${entry}" ]]; then
+      (( ${config[(Ie)$entry]} )) \
+        || log warning "Detected ${home}/${entry}, which other accounts cannot see (merge it into ${shared}/${entry} and delete it)"
+      continue
+    fi
     ln -sn "${shared}/${entry}" "${home}/${entry}" 2>/dev/null \
       || [[ "${home}/${entry}" -ef "${shared}/${entry}" ]] \
       || ln -sfn "${shared}/${entry}" "${home}/${entry}" 2>/dev/null
@@ -1881,10 +1903,10 @@ claude:add() {
   log success "Added ${account} (start it with claude:as ${account})"
 }
 
-# Sign an account out and move its directory to the Trash, so that its
-# transcripts stay recoverable. Signing out first matters: the keychain item is
-# keyed on the path, and nothing could find it once the directory is gone. The
-# Chrome profile stays, since it may hold other logins.
+# Sign an account out and move its directory to the Trash. Signing out first
+# matters: the keychain item is keyed on the path, and nothing could find it once
+# the directory is gone. Memory and history stay in ~/.claude for the other
+# accounts, and the Chrome profile stays, since it may hold other logins.
 # Usage: claude:remove <account>
 claude:remove() {
   (( $# == 1 )) || { echo "Usage: claude:remove <account>" >&2; return 1; }
