@@ -220,10 +220,9 @@ MobileBackups.trash
 tmbootpicker.efi
 
 # ---- chezmoi ----
-# Rendered forms of the templates that inline a keychain secret. Saying yes to
-# `chezmoi add` on one of those targets, or passing --force, drops the template
-# attribute and replaces the .tmpl with the rendered file, tokens and all. This
-# repository is public, so those names must never reach a commit.
+# Templates that inline a keychain secret. `chezmoi add` on one of those targets
+# replaces the .tmpl with the rendered file, tokens and all, and this repository
+# is public.
 private_dot_exports
 private_dot_npmrc
 private_dot_wakatime.cfg

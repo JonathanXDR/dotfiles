@@ -19,12 +19,9 @@
 	clean = git-lfs clean -- %f
 [pull]
 	rebase = true
-# Conventional Commits subject lines, the same set the Oh My Zsh git-commit
-# plugin provides. They live here rather than in the plugin because that plugin
-# works by running `git config --global`, which rewrites this file behind
-# chezmoi's back, so it drifts from the source on every apply.
+# Not the Oh My Zsh git-commit plugin, which runs `git config --global` and so
+# rewrites this file behind chezmoi's back.
 #
-# `cc` is the shared implementation and each alias below binds one type to it.
 # Add a scope with -s/--scope, mark a breaking change with -a/--attention:
 #   git feat add pagination            ->  feat: add pagination
 #   git fix -s auth -a drop v1 tokens  ->  fix(auth)!: drop v1 tokens

@@ -620,9 +620,7 @@ hs_err_pid*
 .metals/
 
 # ---- mise ----
-# Per-repo interpreter pins are local machine setup, not project configuration,
-# and mise documents mise.local.toml as never-commit. Undotted mise.toml stays
-# out on purpose, because a repo that adopts mise commits it.
+# Undotted mise.toml stays out, because a repo that adopts mise commits it
 .mise.toml
 .mise.local.toml
 mise.local.toml
