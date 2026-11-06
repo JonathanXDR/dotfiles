@@ -1,4 +1,3 @@
-{{- /* Defaults from the iCloud Drive config */ -}}
 {{- $icloudSecrets := joinPath .chezmoi.homeDir "Documents/General/Developer/.dotfiles" -}}
 {{- $icloudConfigPath := joinPath $icloudSecrets "config.toml" -}}
 {{- $icloudConfig := dict -}}
@@ -6,21 +5,16 @@
 {{-   $icloudConfig = include $icloudConfigPath | fromToml -}}
 {{- end -}}
 
-{{- /* Every config key with its fallback value, which is also the default the
-      prompt below offers. */ -}}
 {{- $config := dict
       "email"    ""
       "name"     ""
       "gpg_key"  "" -}}
 
-{{- /* Prompt text `chezmoi init` shows for keys config.toml omits */ -}}
 {{- $configPrompts := dict
       "email"    "Git email address"
       "name"     "Git full name"
       "gpg_key"  "GPG signing key ID (leave empty to disable signing)" -}}
 
-{{- /* A value from config.toml wins, otherwise promptStringOnce asks for it and
-      caches the answer in chezmoi.toml. The list keeps the prompt order. */ -}}
 {{- range $key := list "email" "name" "gpg_key" -}}
 {{-   if hasKey $icloudConfig $key -}}
 {{-     $_ := set $config $key (index $icloudConfig $key) -}}
@@ -29,10 +23,6 @@
 {{-   end -}}
 {{- end -}}
 
-{{- /* Master password for the dotfiles keychain. Leave it empty and the
-       keychain follows the login session's unlock state, so it never prompts.
-       Set one and the keychain starts locked and prompts once per session.
-       Either answer is cached in chezmoi.toml. */ -}}
 {{- $keychain_password := promptStringOnce $ "keychain_password" "Master password for the dotfiles keychain (leave empty for no password)" "" -}}
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
@@ -44,8 +34,6 @@ mode = "symlink"
   gpg_key = {{ index $config "gpg_key" | quote }}
   icloud_secrets = {{ $icloudSecrets | quote }}
 
-  # Master password for the dotfiles keychain (empty means no password, so the
-  # keychain follows the login session's unlock state)
   keychain_password = {{ $keychain_password | quote }}
 
 [scriptEnv]
@@ -58,11 +46,8 @@ mode = "symlink"
   command = "jq"
   args = ["."]
 
-# Zed's settings are JSONC. jq exits non-zero on the comments and trailing
-# commas, and that aborts the entire diff walk, hiding every target chezmoi has
-# not reached yet. Passing this one file through untouched keeps jq formatting
-# everywhere else. chezmoi matches the longest pattern, so this wins over the
-# rule above.
+# Zed's settings are JSONC, and a jq failure aborts the whole diff walk. chezmoi
+# matches the longest pattern, so this wins over the rule above.
 [[textconv]]
   pattern = "**/zed/settings.json"
   command = "cat"

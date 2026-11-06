@@ -8,7 +8,7 @@ set -euo pipefail
 
 _ensure_brew
 
-# Not a warning, which a machine without hunspell would print on every apply
+# A warning would print on every apply on a machine without hunspell
 if ! _cmd_exists hunspell; then
   _log debug "Skipped Hunspell dictionaries (hunspell not installed)"
   exit 0

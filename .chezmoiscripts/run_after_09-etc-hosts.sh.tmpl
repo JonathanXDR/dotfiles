@@ -2,19 +2,12 @@
 set -euo pipefail
 {{ template "shell-helpers" . }}
 
-# The chezmoi destination for this repo is $HOME, so /etc/hosts cannot be a
-# managed file. chezmoi symlinks ~/.config/hosts like any other plain file and
-# this script installs a root-owned copy of it over /etc/hosts.
+# This installs a root-owned copy, because a symlink to a file in $HOME would
+# let any process running as this user rewrite system name resolution without
+# sudo.
 #
-# A copy, not a symlink. Pointing /etc/hosts at a file in $HOME handed every
-# process running as this user the ability to rewrite system name resolution
-# with no sudo at all, which is a boundary the system expects to be root-only.
-# An npm postinstall or any CLI could redirect any hostname silently.
-#
-# This runs on every apply rather than behind a content hash, because the state
-# it depends on is /etc/hosts itself. A macOS upgrade, Docker Desktop, or a VPN
-# client can replace it, and only a check on every apply notices and repairs
-# that.
+# This runs on every apply, because a macOS upgrade, Docker Desktop or a VPN
+# client can replace /etc/hosts.
 
 HOSTS_SRC="{{ .chezmoi.homeDir }}/.config/hosts"
 
@@ -24,11 +17,9 @@ if [[ ! -f "$HOSTS_SRC" ]]; then
   exit 1
 fi
 
-# Back up only the first real file seen. A symlink is the previous design's
-# work, and a regular file written later by an installer must not become the
-# backup either, so the marker file is what makes this once-only. Content this
-# script already installed is a backup of nothing, the state the symlink-era
-# migration left behind here, so skip that case too.
+# Back up only the first real file seen, because one written later by an
+# installer must not become the backup. Neither a symlink nor content this
+# script installed is worth keeping.
 if [[ -f /etc/hosts && ! -L /etc/hosts && ! -e /etc/hosts.chezmoi-backup ]] \
   && ! cmp -s "$HOSTS_SRC" /etc/hosts; then
   _log info "Backing up the current /etc/hosts…"
@@ -36,11 +27,9 @@ if [[ -f /etc/hosts && ! -L /etc/hosts && ! -e /etc/hosts.chezmoi-backup ]] \
   _log success "Backed up the previous /etc/hosts (/etc/hosts.chezmoi-backup)"
 fi
 
-# Silent in the steady state, so the every-apply check stays invisible. `cmp`
-# follows a symlink and would call the old layout identical, so test for one
-# separately. Write beside the target and rename, because renaming over a
-# symlink replaces the link itself rather than writing through it, and never
-# leaves /etc/hosts missing on a failed write.
+# `cmp` follows a symlink, so test for one separately. A rename replaces a
+# symlink rather than writing through it, and never leaves /etc/hosts missing on
+# a failed write.
 if [[ -L /etc/hosts ]] || ! cmp -s "$HOSTS_SRC" /etc/hosts; then
   _log info "Installing /etc/hosts from ${HOSTS_SRC} (requires sudo)…"
   sudo install -m 0644 -o root -g wheel "$HOSTS_SRC" /etc/hosts.chezmoi-new

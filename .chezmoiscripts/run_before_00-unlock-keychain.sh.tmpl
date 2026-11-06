@@ -2,33 +2,21 @@
 set -euo pipefail
 {{ template "shell-helpers" . }}
 
-# Unlock the dotfiles keychain once per `chezmoi apply` so later template
-# renders, which call `security find-generic-password`, read managed secrets
-# without prompting. Custom keychains are not auto-managed by securityd, so
-# without this every render would trigger its own unlock prompt.
-#
-# The script also re-applies the lock policy on every run, so a machine with a
-# misconfigured keychain heals itself. Policy: lock on system sleep, no idle
-# timeout (`-l` only).
+# securityd does not auto-manage custom keychains, so every template render
+# would otherwise trigger its own unlock prompt. This re-applies the lock policy
+# to repair a misconfigured keychain.
 
 KEYCHAIN_NAME={{ .keychain_name | quote }}
 KEYCHAIN="${HOME}/Library/Keychains/${KEYCHAIN_NAME}.keychain-db"
 KEYCHAIN_PASSWORD={{ if hasKey . "keychain_password" }}{{ .keychain_password | shellQuote }}{{ else }}""{{ end }}
 
-# Nothing to unlock on a first apply, since run_once_before_02 creates the
-# keychain.
+# run_once_before_02 creates the keychain on a first apply
 [[ -f "$KEYCHAIN" ]] || exit 0
 
-# Unlock first. `security set-keychain-settings` needs an unlocked keychain and
-# blocks on the macOS GUI unlock dialog otherwise, which would hang the whole
-# apply before any template renders. The keychain is locked in exactly the two
-# cases this script exists for: a configured master password, and the `-l`
-# policy this line installs, which locks on system sleep.
-# Passing the password with `-p` puts it in the process table, which any local
-# account can read, and security's own usage text calls the flag insecure.
-# Interactive mode takes the same command on stdin instead and still exits
-# non-zero on a wrong password. The two substitutions escape backslashes and
-# then double quotes for the interactive parser.
+# Unlock first, because `security set-keychain-settings` otherwise blocks on the
+# GUI unlock dialog and hangs the apply. Interactive mode keeps the password out
+# of the process table, and its parser needs backslashes and then double quotes
+# escaped.
 escaped="${KEYCHAIN_PASSWORD//\\/\\\\}"
 printf 'unlock-keychain -p "%s" "%s"\n' "${escaped//\"/\\\"}" "$KEYCHAIN" | security -i
 security set-keychain-settings -l "$KEYCHAIN"

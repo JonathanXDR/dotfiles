@@ -1,25 +1,13 @@
-# Shared non-secret data for chezmoi templates, available as {{ .editor }} and
-# so on. Most values reach the shell through private_dot_exports.tmpl, which
-# assigns each one to the shell variable named in its comment. Those are
-# exported, except HISTSIZE, SAVEHIST and HISTORY_IGNORE, which stay unexported
-# because zsh reads them as shell parameters.
+editor = "vi"
+history_size = 32768
+autostart_ssh_agent = false
 
-# Shell defaults
-editor = "vi"                # EDITOR and KUBE_EDITOR
-history_size = 32768         # HISTSIZE and SAVEHIST
-autostart_ssh_agent = false  # AUTOSTART_SSH_AGENT
-
-# Command prefixes kept out of shell history, via HISTORY_IGNORE and the
-# zshaddhistory hook in private_dot_exports.tmpl
 history_ignore = ["claude", "codex", "copilot", "gh copilot"]
 
-# Hostname that hostname:reset restores, exported as DEFAULT_HOSTNAME
 default_hostname = "void(0)"
 
-# Paths that tre and trec leave out, exported as TREE_IGNORE
 tree_ignore = ".git|node_modules|.DS_Store|dist|build|target|__pycache__|.venv|.next|.nuxt|.svelte-kit|.gradle|coverage"
 
-# Dock layout that dock:reset rebuilds, exported as DOCK_APPS
 dock_apps = [
   "Zen",
   "Zed",
@@ -29,41 +17,26 @@ dock_apps = [
   "GitKraken",
 ]
 
-# Basenames that rm deletes outright instead of trashing, exported as TRASH_SKIP
 trash_skip = ["node_modules"]
 
-# Dedicated keychain for managed secrets, separate from the login keychain.
-# `keychain_name` becomes ~/Library/Keychains/<name>.keychain-db.
-# `keychain_lookup_field` picks the attribute the template helper searches on:
-# name (Label / -l), where (Service / -s), kind (Description / -D), or comment
-# (Comments / -j). Identifiers passed to the secret:* functions and to
-# `includeTemplate "keychain"` are matched against that attribute.
-keychain_name = "dotfiles"      # SECRETS_KEYCHAIN_NAME
-keychain_lookup_field = "name"  # SECRETS_KEYCHAIN_LOOKUP_FIELD
+keychain_name = "dotfiles"
+keychain_lookup_field = "name"
 
-# Paths Claude Code must never read or modify. Rendered from this one list into
-# both enforcement layers: permissions.deny in private_dot_claude/
-# private_settings.json.tmpl, and the blocklist baked into the
-# block-path-access.sh guard hook. Not exported to the shell.
+# Rendered into both permissions.deny and the block-path-access.sh hook.
 #
-# Prefer a bare name. It matches that file or directory at any depth, so it
-# still covers the file when the path is spelled another way: ~/.ssh is a
-# symlink into iCloud on this machine, and a bare .ssh guards the target and any
-# copy of it, where the entry "~/.ssh" would only guard the one spelling.
-# A bare name matches between path-component boundaries, and a dot closes a
-# component without opening one, so .env covers .env and .env.local but not
-# .envelope, and .aws does not fire on an identifier like awsRegion.
+# Prefer a bare name, which matches at any depth and so still covers a symlink's
+# target. A dot closes a path component without opening one, so a name covers
+# its dotted variants but not longer words that start with it.
 #
-# An entry containing a slash is instead matched as a literal path, where ~
-# means the home directory. Write such an entry absolute or ~-rooted: the deny
-# layer anchors a bare relative path to the working directory, while the hook
-# matches it anywhere, and the two would disagree.
+# An entry with a slash is a literal path, so write it absolute or ~-rooted: the
+# deny layer anchors a relative path to the working directory, while the hook
+# matches anywhere.
 #
-# Do not use a glob character. The hook matches entries literally and would
-# cover nothing, while the deny rules would read it as a gitignore wildcard.
+# No glob characters: the hook matches literally, and the deny rules read a
+# wildcard.
 claude_blocked_paths = [
-  # The iCloud backup directory whose tokens file holds every managed
-  # secret in cleartext.
+  # The iCloud backup directory, whose tokens file holds every secret in
+  # cleartext
   ".keychain",
   ".ssh",
   ".gnupg",

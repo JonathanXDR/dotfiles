@@ -1,3 +1,1 @@
-{{- /* The `security find-generic-password` flag that matches an id against the
-       keychain field named by <lookup-field>. Args: "<lookup-field>" */ -}}
 {{- index (dict "name" "-l" "where" "-s" "kind" "-D" "comment" "-j") . | default "-l" -}}

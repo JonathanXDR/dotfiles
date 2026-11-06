@@ -2,22 +2,15 @@
 set -euo pipefail
 {{ template "shell-helpers" . }}
 
-# Re-export managed secrets from the dotfiles keychain to iCloud Drive after
-# every apply. Delegates to the secrets:export zsh function, the single
-# implementation of the export logic. That function enumerates the keychain
-# (the source of truth) and skips the write when nothing changed.
-
 KEYCHAIN_NAME={{ .keychain_name | quote }}
 KEYCHAIN="$HOME/Library/Keychains/${KEYCHAIN_NAME}.keychain-db"
 TOKENS_FILE="{{ .icloud_secrets }}/.keychain/tokens"
 
 # Requiring the tokens file avoids seeding the iCloud path before iCloud has
-# synced it down. The first backup always comes from an interactive
-# secrets:export.
+# synced it down
 [[ -f "$KEYCHAIN" && -f "$TOKENS_FILE" && -f "$HOME/.functions" ]] || exit 0
 
-# A failed export must not abort the apply (script 09 still has to run), so
-# problems surface as a warning next to the function's own error output.
+# A failed export must not abort the apply, because script 09 still has to run
 SECRETS_TOKENS_FILE="$TOKENS_FILE" \
 SECRETS_KEYCHAIN_NAME="$KEYCHAIN_NAME" \
   zsh -c 'source "$HOME/.functions" && secrets:export' \

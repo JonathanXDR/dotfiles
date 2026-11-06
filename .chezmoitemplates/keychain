@@ -1,11 +1,6 @@
-{{- /* Look up a managed secret, matching <id> against the keychain field
-       named by <lookup-field>.
-       Args: (list "<id>" "<account>" "<keychain-name>" "<lookup-field>")
-       The last two usually come from the caller's chezmoi data. */ -}}
+{{- /* Args: (list "<id>" "<account>" "<keychain-name>" "<lookup-field>") */ -}}
 {{- $flag := includeTemplate "keychain-flag" (index . 3) -}}
-{{- /* Only exit 44 (errSecItemNotFound) means "this machine has no such
-       secret", the case callers render as an empty string. Any other failure,
-       a locked keychain above all, has to stop the render, because swallowing
-       it strips working credentials out of ~/.npmrc and every other file that
-       reads a secret. */ -}}
+{{- /* Only exit 44 (errSecItemNotFound) renders as empty. Any other failure, a
+       locked keychain above all, has to stop the render, or it strips working
+       credentials out of every file that reads a secret. */ -}}
 {{- output "sh" "-c" "security find-generic-password \"$1\" \"$2\" -a \"$3\" -w \"$HOME/Library/Keychains/$4.keychain-db\" 2>/dev/null; status=$?; [ $status -eq 0 ] || [ $status -eq 44 ] || exit $status" "keychain" $flag (index . 0) (index . 1) (index . 2) | trim -}}
