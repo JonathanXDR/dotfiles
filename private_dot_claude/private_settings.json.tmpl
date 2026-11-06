@@ -65,6 +65,16 @@
             "timeout": 60
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/lock-memory-writes.sh'",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -75,6 +85,28 @@
             "type": "command",
             "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/scan-written-secrets.sh'",
             "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/lock-memory-writes.sh'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'{{ .chezmoi.homeDir }}/.claude/hooks/lock-memory-writes.sh'",
+            "timeout": 30
           }
         ]
       }
