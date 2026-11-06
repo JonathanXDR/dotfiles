@@ -436,7 +436,7 @@ check "an account with no sessions directory can be removed" test ! -e "${accoun
 
 hooks="$HOME/.claude/hooks"
 mkdir -p "$hooks" "$accounts/mem" "$HOME/.claude/projects/-app/memory"
-for name in lock-memory-writes; do
+for name in lock-memory-writes guard-live-sessions; do
   cp "${repo}/private_dot_claude/private_hooks/private_executable_${name}.sh" "${hooks}/${name}.sh"
   chmod +x "${hooks}/${name}.sh"
 done
@@ -561,6 +561,90 @@ waited=$SECONDS
 check "an unwritable store is left alone" memory_hook PreToolUse Edit t13 "${tmp}/locked/.claude/agent-memory/x/n.md"
 check "an unwritable store does not spin" test $(( SECONDS - waited )) -lt 3
 chmod 700 "${tmp}/locked/.claude/agent-memory/x"
+
+# ------------------------------ Live sessions ------------------------------ #
+
+owners="$HOME/.claude/session-owners"
+guard="${hooks}/guard-live-sessions.sh"
+session_hook() {
+  jq -n --arg e "$1" --arg s "$2" --arg c "${3:-/work}" '{hook_event_name: $e, session_id: $s, cwd: $c}' | "$guard"
+}
+owner_record() { printf '%s\n' "$2" "${5-$(ps -o lstart= -p "$2")}" "$3" "$4" > "${owners}/$1"; }
+# Not through $(...), whose subshell would be a different parent for the hook.
+session_quiet() { session_hook "$@" > "${tmp}/hook.out"; [[ ! -s "${tmp}/hook.out" ]]; }
+
+check "a new session stays quiet" session_quiet SessionStart s1
+check "a session records its owner" same "$(sed -n 1p "${owners}/s1")" "$$"
+check "the primary is named" same "$(sed -n 3p "${owners}/s1")" "primary"
+check "the directory is recorded" same "$(sed -n 4p "${owners}/s1")" "/work"
+check "its own prompt passes" session_quiet UserPromptSubmit s1
+CLAUDE_CONFIG_DIR="$accounts/mem" session_hook SessionStart s2 > "${tmp}/hook.out"
+check "an account is named" same "$(sed -n 3p "${owners}/s2")" "mem"
+check "an account states itself to the session" has "$(jq -r .hookSpecificOutput.additionalContext "${tmp}/hook.out")" "account mem."
+
+owner_record s3 "$live" other /work
+output="$(session_hook UserPromptSubmit s3)"
+check "a prompt to a live session is blocked" same "$(jq -r .decision <<<"$output")" block
+check "the block names the owner" has "$output" "process ${live} (other)"
+check "the block keeps the prompt out of its message" same "$(jq -r .hookSpecificOutput.suppressOriginalPrompt <<<"$output")" true
+check "the block offers a copy" has "$output" "/branch"
+check "a block leaves the owner in place" same "$(sed -n 1p "${owners}/s3")" "$live"
+check "opening a live session warns" has "$(session_hook SessionStart s3 | jq -r .systemMessage)" "live in process ${live}"
+session_hook SessionEnd s3
+check "another session's end leaves the record" test -f "${owners}/s3"
+owner_record s3b "$$" self /work
+session_hook SessionEnd s3b
+check "a record padded like ps output still matches" test ! -e "${owners}/s3b"
+session_hook SessionEnd s1
+check "a session's end clears its record" test ! -e "${owners}/s1"
+
+owner_record s4 "$dead" gone /work
+check "a dead owner blocks nothing" session_quiet UserPromptSubmit s4
+check "the next session takes over" same "$(sed -n 1p "${owners}/s4")" "$$"
+owner_record s5 "$live" other /work "Thu Jan  1 00:00:00 1970"
+check "a reused pid blocks nothing" session_quiet UserPromptSubmit s5
+
+live_id=11111111-2222-4333-8444-555555555555
+free_id=99999999-2222-4333-8444-555555555555
+owner_record "$live_id" "$live" other /work
+owner_record s7 "$dead" gone /work
+check "a neighbour in the directory is named" has "$(session_hook SessionStart s8 /work | jq -r .systemMessage)" "process ${live} (other)"
+check "the warning points at worktrees" has "$(session_hook SessionStart s9 /work | jq -r .systemMessage)" "--worktree"
+check "a session elsewhere stays quiet" session_quiet SessionStart s10 /elsewhere
+check "a start clears records of dead sessions" test ! -e "${owners}/s7"
+
+check "a live directory is found" has "$("$guard" live /work)" "(other)"
+check "a live session is found by id" has "$("$guard" live /elsewhere "$live_id")" "(other)"
+check "nothing live elsewhere" fails "$guard" live /nowhere
+check "a named session ignores the directory" fails "$guard" live /work "$free_id"
+
+mkdir -p "${tmp}/here"
+owner_record s11 "$live" other "${tmp:A}/here"
+fork_flag() { ( cd "$1" && shift && claude:_fork-live "$@" 2>/dev/null ); }
+check "--continue forks beside a live session" same "$(fork_flag "${tmp}/here" --continue)" "--fork-session"
+check "-c forks beside a live session" same "$(fork_flag "${tmp}/here" -p hi -c)" "--fork-session"
+check "the picker forks beside a live session" same "$(fork_flag "${tmp}/here" --resume)" "--fork-session"
+check "a live id forks from anywhere" same "$(fork_flag / --resume "$live_id")" "--fork-session"
+check "a live transcript path forks from anywhere" same "$(fork_flag / -r "/x/y/${live_id}.jsonl")" "--fork-session"
+check "--resume=<path> forks from anywhere" same "$(fork_flag / "--resume=/x/y/${live_id}.jsonl")" "--fork-session"
+check "a session nobody holds is not forked" same "$(fork_flag "${tmp}/here" --resume "$free_id")" ""
+check "a session name counts as none named" same "$(fork_flag "${tmp}/here" --resume my-session)" "--fork-session"
+check "a flag after --resume counts as none named" same "$(fork_flag "${tmp}/here" --resume -p hi)" "--fork-session"
+check "a new session is not forked" same "$(fork_flag "${tmp}/here" -p hi)" ""
+check "an explicit fork is not doubled" same "$(fork_flag "${tmp}/here" --continue --fork-session)" ""
+
+reset_calls
+( cd "${tmp}/here" && claude:as mem --continue >/dev/null )
+check "claude:as forks a live session" has "$(last_call)" "--fork-session --continue"
+reset_calls
+( cd "${tmp}/here" && claude --continue >/dev/null )
+check "plain claude forks a live session" has "$(last_call)" "--fork-session --dangerously-skip-permissions"
+reset_calls
+( cd / && claude --continue >/dev/null )
+check "plain claude adds nothing elsewhere" hasnt "$(last_call)" "--fork-session"
+reset_calls
+( cd "${tmp}/here" && claude:_run "$accounts/mem" claude --continue >/dev/null )
+check "claude:_run runs the binary, not the claude function" hasnt "$(last_call)" "--fork-session"
 kill "$live" 2>/dev/null
 
 # -------------------------------- No accounts ------------------------------ #
@@ -569,10 +653,14 @@ solo="${tmp}/solo"
 mkdir -p "${solo}/.claude/hooks" "${solo}/.claude/projects/-app/memory"
 cp "${hooks}"/*.sh "${solo}/.claude/hooks/"
 print -r -- note > "${solo}/.claude/projects/-app/memory/MEMORY.md"
+print -r -- '{"hook_event_name":"SessionStart","session_id":"s","cwd":"/work"}' > "${tmp}/start.json"
 jq -n --arg p "${solo}/.claude/projects/-app/memory/MEMORY.md" \
   '{hook_event_name: "PreToolUse", tool_name: "Write", tool_use_id: "t", tool_input: {file_path: $p}}' > "${tmp}/write.json"
 check "without accounts Write is left alone" env HOME="$solo" "${solo}/.claude/hooks/lock-memory-writes.sh" < "${tmp}/write.json"
 check "without accounts no lock appears" test ! -L "${solo}/.claude/projects/-app/memory/.write-lock"
+check "without accounts the guard exits cleanly" env HOME="$solo" "${solo}/.claude/hooks/guard-live-sessions.sh" < "${tmp}/start.json"
+check "without accounts nothing is recorded" test ! -e "${solo}/.claude/session-owners"
+check "without accounts nothing counts as live" fails env HOME="$solo" "${solo}/.claude/hooks/guard-live-sessions.sh" live /work
 
 registered() {
   python3 -I -c '
@@ -583,6 +671,9 @@ sys.exit(sys.argv[3] not in block[:block.index("\n    ]")])' "$template" "$1" "$
 }
 for event in PreToolUse PostToolUse PostToolUseFailure; do
   check "${event} runs the memory lock" registered "$event" lock-memory-writes.sh
+done
+for event in SessionStart UserPromptSubmit SessionEnd; do
+  check "${event} runs the session guard" registered "$event" guard-live-sessions.sh
 done
 
 print -r -- "${passed} passed, ${failed} failed"
