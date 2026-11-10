@@ -378,8 +378,6 @@ cask "kiro-cli"
 cask "logi-options+"
 # Cable-free audio router
 cask "loopback"
-# Detailed information on every Apple product ever made
-cask "mactracker"
 # Nintendo DS and DSi emulator
 cask "melonds"
 # Office suite
