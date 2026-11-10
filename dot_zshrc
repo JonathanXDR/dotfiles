@@ -31,6 +31,13 @@ cmd:exists mise && eval "$(mise activate zsh)"
 # oh-my-zsh.sh that sets prompt_subst
 SHOW_AWS_PROMPT=false
 
+# A shell that inherits EDITOR=vi, such as `reload`, would start in vi insert
+# mode. /etc/zshrc has already bound these keys into that keymap.
+bindkey -e
+[[ -n ${key[Delete]} ]] && bindkey -- "${key[Delete]}" delete-char
+[[ -n ${key[Home]} ]] && bindkey -- "${key[Home]}" beginning-of-line
+[[ -n ${key[End]} ]] && bindkey -- "${key[End]}" end-of-line
+
 # This runs before .aliases, which is the authority on any name both define
 plugins:load
 
