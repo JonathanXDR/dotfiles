@@ -331,10 +331,9 @@ plugins:load() {
   zstyle ':completion:*' use-cache on
   zstyle ':completion:*' cache-path "${ZSH_CACHE_DIR}/zcompcache"
 
-  # Plugins call compdef as they load, but compinit has to wait for
-  # .completions, because zsh-syntax-highlighting only wraps widgets that
-  # already exist. A second compinit would discard the first, so the calls queue
-  # for .completions to replay.
+  # Plugins call compdef as they load, but compinit waits for .completions,
+  # which finishes fpath. A second compinit would discard the first, so the calls
+  # queue for .completions to replay.
   typeset -ga COMPDEF_DEFERRED=()
   (( ${+functions[compdef]} )) || \
     compdef() { COMPDEF_DEFERRED+=( "${(j: :)${(q)@}}" ) }

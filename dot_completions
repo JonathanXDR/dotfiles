@@ -95,7 +95,6 @@ if (( $+widgets[menu-select] )); then
   bindkey '\e[Z' _zsh_autocomplete_menu
 fi
 
-# These wrap existing ZLE widgets, so they come after every widget above
 if [[ -n "$brew_share" ]]; then
   [[ -f "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] \
     && source "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
