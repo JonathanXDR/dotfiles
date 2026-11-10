@@ -320,7 +320,6 @@ cask "blender", args: { appdir: "/Applications" }
 cask "burp-suite"
 # OpenAI's official ChatGPT desktop app
 cask "chatgpt"
-cask "citra"
 # Anthropic's official Claude AI desktop app
 cask "claude"
 # Download and manage your addons and mods
@@ -433,7 +432,6 @@ cask "the-unarchiver"
 cask "tor-browser"
 # Your home for Mac updates
 cask "updatest/tap/updatest"
-cask "updatest@beta"
 # Virtual machines UI using QEMU
 cask "utm"
 # Command-line interface for Vercel
