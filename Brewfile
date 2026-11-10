@@ -252,8 +252,6 @@ brew "uv"
 brew "uvicorn"
 # Add declarative schema to .env files using @env-spec decorator comments
 brew "varlock"
-# Command-line interface for Vercel
-brew "vercel"
 # Next generation frontend tooling. It's fast!
 brew "vite"
 # Executes a program periodically, showing output fullscreen
@@ -438,6 +436,8 @@ cask "updatest/tap/updatest"
 cask "updatest@beta"
 # Virtual machines UI using QEMU
 cask "utm"
+# Command-line interface for Vercel
+cask "vercel"
 # Open-source code editor
 cask "visual-studio-code", args: { appdir: "/Applications" }
 # Adaptive brightness for displays
