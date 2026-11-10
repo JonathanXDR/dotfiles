@@ -1406,8 +1406,9 @@ claude:_fork-live() {
 }
 
 # The alias expands to this function, so plain claude cannot reopen an account's
-# live session either
-claude() {
+# live session either. The function keyword keeps the alias from expanding here
+# when .functions is sourced again.
+function claude {
   command claude $(claude:_fork-live "$@") "$@"
 }
 
