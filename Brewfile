@@ -1,7 +1,6 @@
 tap "buo/cask-upgrade", trusted: true
 tap "coursier/formulas", trusted: true
 tap "domt4/autoupdate", trusted: true
-tap "elastic/tap", trusted: true
 tap "hashicorp/tap", trusted: true
 tap "infisical/get-cli", trusted: true
 tap "mongodb/brew", trusted: true
@@ -287,8 +286,6 @@ brew "zsh-history-substring-search"
 brew "zsh-syntax-highlighting"
 # Launcher for Coursier
 brew "coursier/formulas/coursier"
-# Distributed search & analytics engine
-brew "elastic/tap/elasticsearch-full"
 # Vault
 brew "hashicorp/tap/vault", trusted: true
 # The official Infisical CLI
