@@ -273,13 +273,6 @@ have:rails() {
   [[ "$bin" != "/usr/bin/rails" ]]
 }
 
-# With no terminal there is no ZLE, so `fzf --zsh` prints "can't change option:
-# zle". Without fzf the plugin prints a setup error on every prompt.
-have:fzf() {
-  [[ -t 0 ]] || return 1
-  cmd:exists fzf
-}
-
 # antidote never revisits a clone, so nothing else moves the plugins off their
 # first commit
 plugins:update() {

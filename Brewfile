@@ -93,8 +93,6 @@ brew "ffmpeg"
 brew "firebase-cli"
 # Library for FreeImage, a dependency-free graphics library
 brew "freeimage"
-# Command-line fuzzy finder written in Go
-brew "fzf"
 # GitHub command-line tool
 brew "gh"
 # Glorious Glasgow Haskell Compilation System
@@ -283,8 +281,6 @@ brew "zig"
 brew "zlib"
 # UNIX shell (command interpreter)
 brew "zsh"
-# Real-time type-ahead completion for Zsh
-brew "zsh-autocomplete"
 # Fish-like fast/unobtrusive autosuggestions for zsh
 brew "zsh-autosuggestions"
 # Additional completion definitions for zsh

@@ -3,7 +3,6 @@
 #   dotnet before docker       so `dr` stays `docker container run`
 #   rails before react-native  so `rn` stays React Native
 #   helm before history        so `h` stays history
-#   fzf and globalias last     the only entries that bind keys
 
 ohmyzsh/ohmyzsh path:plugins/common-aliases
 ohmyzsh/ohmyzsh path:plugins/encode64
@@ -58,5 +57,4 @@ ohmyzsh/ohmyzsh path:plugins/lol
 ohmyzsh/ohmyzsh path:plugins/aliases
 ohmyzsh/ohmyzsh path:plugins/alias-finder
 
-ohmyzsh/ohmyzsh path:plugins/fzf conditional:have:fzf
 ohmyzsh/ohmyzsh path:plugins/globalias

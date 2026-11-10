@@ -1,17 +1,16 @@
 local brew_share="${HOMEBREW_PREFIX:+${HOMEBREW_PREFIX}/share}"
 
-# zsh-autocomplete reads this and keeps a value already set
 typeset -g _comp_dumpfile="${HOME}/.cache/zsh/compdump"
 
-# zsh-autocomplete re-adds its own entries when sourced, and copies inherited
-# from a parent shell may point at a version that no longer exists.
-# zsh-completions goes first, as its caveats prescribe. bun's file belongs on
-# fpath, because sourcing it runs a full uncached compinit on every shell.
+# `brew shellenv` exports FPATH, so a nested shell inherits these entries and
+# adds them again. zsh-completions goes first, as its caveats prescribe. bun's
+# file belongs on fpath, because sourcing it before compinit runs a full
+# uncached compinit.
 typeset -gU FPATH fpath
 fpath=(
   ${brew_share:+${brew_share}/zsh-completions}
   ${HOME}/.bun(N/)
-  ${fpath:#*/zsh-autocomplete/(Completions|z-async)}
+  $fpath
 )
 
 # compinit -C skips a freshness check that costs about 440 ms per shell, so two
@@ -28,21 +27,16 @@ if (( ! ${#fresh} )) || [[ ! -f $fpath_stamp || "$fpath" != "$(<$fpath_stamp)" ]
   print -r -- "$fpath" >| "$fpath_stamp"
 fi
 
-if [[ -n "$brew_share" && -f "${brew_share}/zsh-autocomplete/zsh-autocomplete.plugin.zsh" ]]; then
-  # zsh-autocomplete runs compinit itself, and a foreign one makes it rebuild
-  # the dump on every shell
-  zstyle ':autocomplete::compinit' arguments -C
+zmodload zsh/complist
+autoload -Uz compinit
+compinit -C -d "$_comp_dumpfile"
 
-  # The async redraw loop wipes Kiro's figterm inline suggestions
-  zstyle ':autocomplete:async' enabled no
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format $'%{\e[2m%}%d%{\e[0m%}'
+unsetopt LIST_BEEP
 
-  source "${brew_share}/zsh-autocomplete/zsh-autocomplete.plugin.zsh"
-else
-  autoload -Uz compinit
-  compinit -C -d "$_comp_dumpfile"
-fi
-
-# With zsh-autocomplete these land in its own queue, flushed after its compinit
 if (( ${#COMPDEF_DEFERRED} )); then
   local deferred
   for deferred in "${COMPDEF_DEFERRED[@]}"; do
@@ -76,31 +70,31 @@ if cmd:exists ng; then
   [[ -s "$ng_completion" ]] && source "$ng_completion"
 fi
 
+# Every widget exists before the first prompt, so one binding pass replaces the
+# default rebind before every prompt
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1
+
 if [[ -n "$brew_share" ]]; then
   [[ -f "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] \
     && source "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh"
 fi
 
-# zsh-autocomplete leaves no key on `menu-select`. The wrapper clears the
-# autosuggestion ghost text, which otherwise gets committed into the buffer. It
-# binds into `main`, because zsh-autocomplete rebuilds `emacs` from a precmd
-# hook.
-if (( $+widgets[menu-select] )); then
-  _zsh_autocomplete_menu() {
-    unset POSTDISPLAY
-    zle menu-select
-  }
-
-  zle -N _zsh_autocomplete_menu
-  bindkey '\e[Z' _zsh_autocomplete_menu
-fi
+bindkey '^[[Z' reverse-menu-complete
+bindkey -M menuselect '^[[Z' reverse-menu-complete
 
 if [[ -n "$brew_share" ]]; then
   [[ -f "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] \
     && source "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
-  [[ -f "${brew_share}/zsh-history-substring-search/zsh-history-substring-search.zsh" ]] \
-    && source "${brew_share}/zsh-history-substring-search/zsh-history-substring-search.zsh"
+  if [[ -f "${brew_share}/zsh-history-substring-search/zsh-history-substring-search.zsh" ]]; then
+    source "${brew_share}/zsh-history-substring-search/zsh-history-substring-search.zsh"
+    bindkey '^[[A' history-substring-search-up '^[OA' history-substring-search-up
+    bindkey '^[[B' history-substring-search-down '^[OB' history-substring-search-down
+
+    # Alt-Up and Alt-Down, which would otherwise type the tail of their sequence
+    bindkey '^[[1;3A' history-substring-search-up '^[^[[A' history-substring-search-up
+    bindkey '^[[1;3B' history-substring-search-down '^[^[[B' history-substring-search-down
+  fi
 fi
 
 # `local` outside a function is `typeset`, and this file is sourced
