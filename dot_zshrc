@@ -37,6 +37,13 @@ plugins:load
 source "${HOME}/.aliases"
 source "${HOME}/.completions"
 
+# Suggestions stay on zsh history, because Atuin's strategy runs a search
+# process on every keypress
+if cmd:exists atuin; then
+  eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
+  ZSH_AUTOSUGGEST_STRATEGY=(history)
+fi
+
 [[ "${AUTOSTART_SSH_AGENT}" == "true" ]] && ssh:agent
 
 runaway:alerts

@@ -1,0 +1,6 @@
+# The globalias plugin expands an alias such as claude into \claude on Space
+history_filter = [
+{{- range .history_ignore }}
+  {{ printf `^\\?%s` (regexQuoteMeta .) | quote }},
+{{- end }}
+]

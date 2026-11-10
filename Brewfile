@@ -17,6 +17,8 @@ tap "updatest/tap", "https://github.com/updatest/tap.git", trusted: true
 brew "act"
 # Plugin manager for zsh, inspired by antigen and antibody
 brew "antidote"
+# Improved shell history for zsh, bash, fish and nushell
+brew "atuin"
 # Tool for generating GNU Standards-compliant Makefiles
 brew "automake"
 # Official Amazon AWS command-line interface

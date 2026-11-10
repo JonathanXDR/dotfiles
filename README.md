@@ -209,6 +209,8 @@ plugins:load ────── Oh My Zsh plugins, compiled by antidote from ~/.
         │
 ~/.completions ──── Completions, zsh plugins, autosuggestions, syntax highlighting
         │
+Atuin ───────────── History recording
+        │
 Runtime hooks ───── SSH agent, runaway alerts, daily mise, brew, and plugin checks
 ```
 
@@ -243,6 +245,7 @@ The source maps onto `$HOME` like this:
 ├── dot_gitignore_global                     # Global gitignore
 ├── private_dot_npmrc.tmpl                   # npm registry tokens (0600, from keychain)
 ├── private_dot_wakatime.cfg.tmpl            # WakaTime API key (0600, from keychain)
+├── private_dot_atuin/config.toml.tmpl       # Atuin history filter, built from history_ignore
 ├── dot_local/bin/executable_runaway-watch   # Flags stuck processes, busy GPU (every 2 min, launchd)
 ├── dot_local/bin/executable_claude-account-browser # Opens a URL in an account's Chrome profile
 ├── dot_config/                              # ~/.config

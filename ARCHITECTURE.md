@@ -125,6 +125,7 @@ Dotfiles/
 ├── dot_gitignore_global                                 # Global gitignore (referenced by dot_gitconfig.tmpl)
 ├── private_dot_npmrc.tmpl                               # npm registry tokens (0600, from keychain)
 ├── private_dot_wakatime.cfg.tmpl                        # WakaTime API key (0600, from keychain)
+├── private_dot_atuin/config.toml.tmpl                   # Atuin history filter, built from history_ignore
 ├── dot_local/private_share/.keep                        # Keeps ~/.local/share at 0700, which holds the Agent Skills clones
 ├── dot_local/bin/executable_runaway-watch               # Flags stuck processes and a busy GPU, run by launchd every 2 min
 ├── dot_local/bin/executable_claude-account-browser      # Opens a URL in the Chrome profile of a Claude Code account
@@ -518,6 +519,9 @@ When a new terminal opens, startup runs in this exact order. zsh reads the first
           │
           v
   ~/.completions ───────── zsh completions, autosuggestions, syntax highlighting
+          │
+          v
+  Atuin ────────────────── History recording
           │
           v
   Runtime hooks ────────── SSH agent, runaway watcher alerts
