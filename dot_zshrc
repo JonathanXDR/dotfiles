@@ -21,9 +21,10 @@ path:append "$HOME/Library/Application Support/Coursier/bin"
 
 path:append ${(s.:.)PATH_ADD}
 
-# This runs after every other PATH writer, because activation re-derives PATH
-# from a snapshot on each prompt, so anything prepended later outranks the
-# managed toolchain
+# After the PATH setup, so startup code finds the managed tools, and before
+# plugins:load, whose background completion jobs (codex's, for one) would
+# otherwise go through the slower shims. That costs more than the one extra
+# `mise hook-env` the composer plugin's later PATH append causes.
 cmd:exists mise && eval "$(mise activate zsh)"
 
 # The aws plugin's RPROMPT segment prints literally, because antidote skips the

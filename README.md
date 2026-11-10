@@ -202,7 +202,7 @@ Every new terminal runs these files and hooks in this order:
         │
 ~/.functions ────── Utility functions
         │
-PATH setup ──────── Homebrew first, then tool paths, then mise activation (last)
+PATH setup ──────── Homebrew first, then tool paths, then mise activation
         │
 plugins:load ────── Oh My Zsh plugins, compiled by antidote from ~/.plugins
         │
