@@ -11,8 +11,9 @@ unalias rm cp mv 2>/dev/null
 # plugin's
 alias:prune-suffix
 
-# Quoted, because global aliases otherwise expand before unalias sees them
-unalias "M" "P" 2>/dev/null
+# Global aliases also expand inside scripts sourced later, such as Figxit's
+# init script, which passes a bare `L`
+(( ${#galiases} )) && unalias -- ${(k)galiases}
 
 # Give these back to their binaries: coreutils (gcp grm gpr god), Coursier (cs),
 # and the Angular CLI and @antfu/ni (ng ni na). `cu` and `asr` stay shadowed on
