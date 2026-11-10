@@ -43,4 +43,11 @@ claude_blocked_paths = [
   ".aws",
   ".kube",
   ".env",
+  # Rendered copies of keychain secrets. npmrc and Zed's settings stay ~-rooted,
+  # because bare names would also match each project's own file.
+  ".exports",
+  ".wakatime.cfg",
+  "~/.npmrc",
+  "~/.config/zed/settings.json",
+  "~/.config/zed/settings_backup.json",
 ]

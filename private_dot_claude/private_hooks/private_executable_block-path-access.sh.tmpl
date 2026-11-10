@@ -16,6 +16,11 @@
 #   - `git cat-file -p <sha>`, which names a blob hash rather than a path
 #   - mdfind, which answers questions about content without opening the file
 #   - paths assembled at runtime from variables or escape sequences
+#   - a relative or ~user reference to an entry written with ~/, such as
+#     `cd ~ && cat .npmrc`, because the hook does not know the working directory
+#   - a glob that matches an entry, such as `cat ~/.wakatime*`
+#   - secrets read from the keychain (`security`, `secret:get`) or from the
+#     environment, which never name a file
 #   - a project setting disableAllHooks
 
 payload=$(cat)
@@ -41,7 +46,8 @@ fi
 [ -n "$subject" ] || exit 0
 
 # Single-quoted with apostrophes escaped, so an entry is data and cannot break
-# the hook
+# the hook. A ~/ stays literal here, because norm() expands it.
+# shellcheck disable=SC2088
 blocked=(
 {{- range .claude_blocked_paths }}
   {{ printf "'%s'" (replace "'" "'\\''" .) }}
