@@ -23,7 +23,6 @@ Keychain-backed, iCloud-synced macOS dotfiles.
 > Turn on [Advanced Data Protection](https://support.apple.com/en-us/108756) before you bootstrap. Without it, Apple can decrypt everything this setup stores on iCloud Drive, including your SSH and GPG keys and the tokens file that holds every managed secret.
 
 - macOS with Xcode Command Line Tools (`xcode-select --install`)
-- [chezmoi](https://chezmoi.io/install/) (`sh -c "$(curl -fsLS get.chezmoi.io)"`)
 - iCloud Drive signed in (for keys, config, and the tokens file)
 - The App Store signed in (the Brewfile installs App Store apps through `mas`)
 
@@ -34,10 +33,10 @@ Clone over HTTPS, because your SSH keys only arrive once chezmoi links `~/.ssh`:
 ```bash
 git clone https://github.com/JonathanXDR/Dotfiles.git ~/Developer/Git/GitHub/Dotfiles
 
-chezmoi init --source ~/Developer/Git/GitHub/Dotfiles --apply
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$TMPDIR" init --source ~/Developer/Git/GitHub/Dotfiles --apply
 ```
 
-`chezmoi init` asks for your email, name, and GPG key, then an optional keychain password. Every answer except the keychain password comes from `config.toml` on iCloud Drive when that file has the key. Your answers are cached, so later runs stay quiet.
+The [installer](https://chezmoi.io/install/) runs a throwaway chezmoi from `$TMPDIR`, and the Brewfile installs the one you keep. `chezmoi init` asks for your email, name, and GPG key, then an optional keychain password. Every answer except the keychain password comes from `config.toml` on iCloud Drive when that file has the key. Your answers are cached, so later runs stay quiet.
 
 From there, chezmoi does the rest:
 
