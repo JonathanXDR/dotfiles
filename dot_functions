@@ -681,7 +681,15 @@ secret:copy() {
   password="$(_secrets:password "$1" "$2")" \
     || { log error "Failed to find $1 / $2"; return 1; }
 
-  printf '%s' "$password" | pbcopy \
+  # The ConcealedType marker keeps clipboard managers such as Raycast from
+  # recording the value, and CurrentHostOnly keeps it off Universal Clipboard
+  printf '%s' "$password" | osascript -l JavaScript -e '
+    ObjC.import("AppKit")
+    const data = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile
+    const pb = $.NSPasteboard.generalPasteboard
+    pb.prepareForNewContentsWithOptions($.NSPasteboardContentsCurrentHostOnly)
+    pb.setStringForType($.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding), "public.utf8-plain-text")
+    pb.setStringForType($(""), "org.nspasteboard.ConcealedType")' >/dev/null \
     || { log error "Failed to copy $1 / $2 to the clipboard"; return 1; }
   snapshot=$(printf '%s' "$password" | shasum -a 256 | awk '{print $1}')
   unset password
