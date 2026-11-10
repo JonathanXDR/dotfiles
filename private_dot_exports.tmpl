@@ -27,8 +27,9 @@ setopt HIST_REDUCE_BLANKS
 setopt SHARE_HISTORY
 
 # HISTORY_IGNORE alone only filters the file write, so the hook keeps matches
-# out of `history` too
-HISTORY_IGNORE='({{ .history_ignore | join "*|" }}*)'
+# out of `history` too. The globalias plugin expands an alias such as claude
+# into \claude on Space.
+HISTORY_IGNORE='(|\\)({{ .history_ignore | join "*|" }}*)'
 zshaddhistory() {
   emulate -L zsh -o extended_glob
   [[ "${1%$'\n'}" != ${~HISTORY_IGNORE} ]]
