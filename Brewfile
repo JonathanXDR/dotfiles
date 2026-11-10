@@ -120,6 +120,8 @@ brew "grunt-cli"
 brew "gulp-cli"
 # Kubernetes package manager
 brew "helm"
+# Tools for reading and writing Macintosh volumes
+brew "hfsutils"
 # Spell checker and morphological analyzer
 brew "hunspell"
 # Comprehensive RPC framework
@@ -244,6 +246,8 @@ brew "tesseract"
 brew "tor"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
+# Command-line unarchiving tools supporting multiple formats
+brew "unar"
 # Compress/expand executable files
 brew "upx"
 # Extremely fast Python package installer and resolver, written in Rust
