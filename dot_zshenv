@@ -7,5 +7,10 @@ typeset -gU PATH path
 export LANG="${LANG:-en_US.UTF-8}"
 
 # This serves editors, LaunchAgents and `zsh -c` scripts, which never read
-# .zshrc. /etc/zprofile undoes it in login shells, so .zprofile repeats it.
-[[ -d "$HOME/.local/share/mise/shims" ]] && path=("$HOME/.local/share/mise/shims" $path)
+# .zshrc. /etc/zprofile undoes it in login shells, so .zprofile repeats it. A
+# non-login child of an activated shell keeps the shims behind the real tool
+# directories. It is an if rather than &&, because a failed test would become
+# the exit status of `zsh -c` scripts.
+if [[ -d "$HOME/.local/share/mise/shims" ]] && (( ! ${path[(Ie)$HOME/.local/share/mise/shims]} )); then
+  path=("$HOME/.local/share/mise/shims" $path)
+fi
