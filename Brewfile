@@ -1,17 +1,11 @@
-tap "bendews/tap", trusted: true
 tap "buo/cask-upgrade", trusted: true
 tap "coursier/formulas", trusted: true
 tap "domt4/autoupdate", trusted: true
 tap "elastic/tap", trusted: true
-tap "go-task/tap", trusted: true
 tap "hashicorp/tap", trusted: true
-tap "homebrew/autoupdate", "https://github.com/DomT4/homebrew-autoupdate.git", trusted: true
-tap "hpedrorodrigues/tools", trusted: true
 tap "infisical/get-cli", trusted: true
-tap "minio/stable", trusted: true
 tap "mongodb/brew", trusted: true
 tap "teamookla/speedtest", trusted: true
-tap "ubuntu/microk8s", trusted: true
 tap "updatest/tap", "https://github.com/updatest/tap.git", trusted: true
 # Run your GitHub Actions locally
 brew "act"
