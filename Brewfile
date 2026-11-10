@@ -390,6 +390,8 @@ cask "microsoft-office-businesspro"
 cask "minecraft", args: { appdir: "/Applications" }
 # Interactive tool for analyzing MongoDB data
 cask "mongodb-compass", args: { appdir: "/Applications" }
+# VPN client
+cask "mullvad-vpn"
 # Reverse proxy, secure introspectable tunnels to localhost
 cask "ngrok"
 # VPN client for secure internet access and private browsing
