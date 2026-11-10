@@ -161,6 +161,7 @@ Dotfiles/
 │   # Tests (not copied to $HOME)
 │
 ├── tests/claude-accounts.zsh                            # Regression tests for the claude:* functions, with stubs
+├── tests/shell-startup.zsh                              # Startup regression tests: keys, history filter, PATH, hooks
 │
 │   # Package list (read by a run script, not copied to $HOME)
 │
@@ -578,6 +579,7 @@ Every script includes `{{ template "shell-helpers" . }}`, which provides shared 
 | Add a Claude Code account            | `claude:add <account>`, then `claude:as <account>`                                                 |
 | List or remove Claude Code accounts  | `claude:accounts`, `claude:remove <account>`                                                       |
 | Test the account functions           | `zsh -f tests/claude-accounts.zsh`                                                                 |
+| Test the shell startup               | `zsh -f tests/shell-startup.zsh`                                                                   |
 | Add or remove an Agent Skill         | `.chezmoidata/skills.toml`                                                                         |
 | Follow everyone one person publishes | `.chezmoidata/skills.toml` (`agent_skill_owners`), then `skills:sync`                              |
 | Find out why a skill is missing      | The `Failed to install the <name> skill` errors at the end of `chezmoi apply`                      |
