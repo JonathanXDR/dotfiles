@@ -37,11 +37,21 @@ plugins:load
 source "${HOME}/.aliases"
 source "${HOME}/.completions"
 
-# Suggestions stay on zsh history, because Atuin's strategy runs a search
-# process on every keypress
+# Figxit ranks by Atuin's history. Suggestions stay on zsh history, because
+# Atuin's strategy runs a search process on every keypress.
 if cmd:exists atuin; then
   eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
   ZSH_AUTOSUGGEST_STRATEGY=(history)
+fi
+
+# Figxit cannot place its list in Zed's terminal. It lowers an untouched
+# KEYTIMEOUT of 40 to 5, which leaves 50 ms for sudo's Esc Esc. Its Enter, Up and
+# Down fall back to accept-line and history search, so they clear the suggestion
+# as those do, instead of drawing it back onto the line that just ran.
+if [[ $TERM_PROGRAM != zed && -x "/Applications/Figxit.app/Contents/MacOS/figxit-engine" ]]; then
+  KEYTIMEOUT=30
+  eval "$(/Applications/Figxit.app/Contents/MacOS/figxit-engine init zsh)"
+  ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(figxit-enter figxit-up figxit-down)
 fi
 
 [[ "${AUTOSTART_SSH_AGENT}" == "true" ]] && ssh:agent

@@ -521,7 +521,7 @@ When a new terminal opens, startup runs in this exact order. zsh reads the first
   ~/.completions ───────── zsh completions, autosuggestions, syntax highlighting
           │
           v
-  Atuin ────────────────── History recording
+  Atuin, Figxit ────────── Atuin history recording, Figxit autocomplete popup
           │
           v
   Runtime hooks ────────── SSH agent, runaway watcher alerts

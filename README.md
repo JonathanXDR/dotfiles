@@ -54,6 +54,8 @@ Finish by starting daily Homebrew upgrades, which the setup counts on to keep mi
 brew autoupdate start --upgrade --sudo
 ```
 
+[Figxit](https://github.com/en3sis/figxit), the autocomplete popup, has no Homebrew cask. Install it once from its DMG and skip its **Add** button, because `.zshrc` already loads it and the button replaces the `~/.zshrc` symlink with a copy. Figxit updates itself.
+
 ## 🧪 Usage
 
 Three chezmoi commands cover most changes:
@@ -209,7 +211,7 @@ plugins:load ────── Oh My Zsh plugins, compiled by antidote from ~/.
         │
 ~/.completions ──── Completions, zsh plugins, autosuggestions, syntax highlighting
         │
-Atuin ───────────── History recording
+Atuin, Figxit ───── Atuin history recording, Figxit autocomplete popup
         │
 Runtime hooks ───── SSH agent, runaway alerts, daily mise, brew, and plugin checks
 ```

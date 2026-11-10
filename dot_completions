@@ -70,8 +70,8 @@ if cmd:exists ng; then
   [[ -s "$ng_completion" ]] && source "$ng_completion"
 fi
 
-# Every widget exists before the first prompt, so one binding pass replaces the
-# default rebind before every prompt
+# Every widget exists before the first prompt, Figxit's and Atuin's included, so
+# one binding pass replaces the default rebind before every prompt
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
 
 if [[ -n "$brew_share" ]]; then
