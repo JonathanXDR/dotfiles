@@ -359,7 +359,7 @@ For the live values (ID / Account / Kind / Used by / Where), run `secrets:list`.
 Every skill ends up in `~/.agents/skills`, the ecosystem's convention for a personal skill directory, and Codex, Copilot CLI and Gemini CLI read it from there with no configuration at all. Claude Code reads only `~/.claude/skills`, so it gets a symlink per skill, which is the mechanism [its own documentation](https://code.claude.com/docs/en/skills) describes.
 
 ```text
-.chezmoidata/skills.toml  +  skills-owners.toml    the inventory (415 skills)
+.chezmoidata/skills.toml  +  skills-owners.toml    the inventory (400+ skills)
         │
         v
 run_after_10-agent-skills, on every chezmoi apply
@@ -396,7 +396,7 @@ Info:    Fix or drop each entry above in .chezmoidata/skills.toml, or run skills
 
 **Removal.** Dropping an entry leaves its link and clone behind, so the script keeps a ledger of what it installed at `~/.local/state/agent-skills/managed`, deletes what the inventory no longer names, and removes any clone no declared skill uses. Anything absent from that ledger is somebody else's and is left alone: a hand-installed skill in the shared directory, including one whose name the inventory also declares, a real directory inside an agent's skill directory, and a symlink pointing anywhere other than the shared directory all survive every apply. A dropped private clone is reported rather than deleted, since it may hold work that was never pushed.
 
-**The listing has a budget.** 415 skills is about 131 KB of names and descriptions, roughly 34,000 tokens. Claude Code and Gemini CLI list all of them, Codex caps its listing at the smaller of 2% of the context window and 8,000 characters and shortens or drops the rest, and every agent spends that text on every session. Trimming means removing entries here, or disabling per agent: `[[skills.config]]` with `enabled = false` in `~/.codex/config.toml`, `disabledSkills` in `~/.copilot/settings.json`, and `skillListingMaxDescChars` in Claude Code's settings.
+**The listing has a budget.** At 400+ skills the names and descriptions come to about 130 KB, roughly 34,000 tokens. Claude Code and Gemini CLI list all of them, Codex caps its listing at the smaller of 2% of the context window and 8,000 characters and shortens or drops the rest, and every agent spends that text on every session. Trimming means removing entries here, or disabling per agent: `[[skills.config]]` with `enabled = false` in `~/.codex/config.toml`, `disabledSkills` in `~/.copilot/settings.json`, and `skillListingMaxDescChars` in Claude Code's settings.
 
 > [!NOTE]
 > `~/.agents/.skill-lock.json` is left over from `npx skills`, which installed this set before chezmoi did. It is inert, but running `npx skills update` would write over directories the script now owns. Declare skills in `.chezmoidata/skills.toml` instead. `npx skills find` is still the way to discover new ones.
