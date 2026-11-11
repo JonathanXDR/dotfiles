@@ -49,7 +49,7 @@ print -r -- "keymap=$(bindkey -lL main)"
 local name seq
 for name seq in up '^[[A' up_app '^[OA' alt_up '^[[1;3A' alt_up_esc '^[^[[A' \
     down '^[[B' down_app '^[OB' alt_down '^[[1;3B' alt_down_esc '^[^[[B' \
-    shift_tab '^[[Z' ctrl_r '^R'; do
+    shift_tab '^[[Z' ctrl_r '^R' esc_tab '^[^I'; do
   print -r -- "key_${name}=$(bindkey "$seq")"
 done
 print -r -- "menu_shift_tab=$(bindkey -M menuselect '^[[Z')"
@@ -137,6 +137,7 @@ interactive_checks() {
   if [[ -x "$figxit_engine" ]]; then
     check "${shell}: Figxit loads" same "${r[figxit]}" 1
     check "${shell}: Esc Esc keeps a usable wait" same "${r[keytimeout]}" 30
+    check "${shell}: Esc then Tab completes" same "${r[key_esc_tab]}" '"^[^I" undefined-key'
     check "${shell}: Figxit's Enter clears the suggestion" has " ${r[clear_widgets]} " " figxit-enter "
   fi
 }
