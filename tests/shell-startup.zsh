@@ -163,5 +163,12 @@ check "zsh -c keeps inherited shims behind real tool directories" same "$out" /o
 (cd "$home" && env -i HOME="$home" PATH="/opt/real/bin:${home}/.local/share/mise/shims:/usr/bin:/bin" /bin/zsh -c 'exit')
 check "zsh -c with inherited shims exits 0" same "$?" 0
 
+# A failed && test as the last line of a startup file becomes the status of the
+# first prompt and of every -c command
+for form in '-i -c' '-l -c' '-l -i -c'; do
+  (run /bin/zsh ${=form} exit)
+  check "zsh ${form} exit exits 0" same "$?" 0
+done
+
 print -r -- "${passed} passed, ${failed} failed"
 (( failed == 0 ))
