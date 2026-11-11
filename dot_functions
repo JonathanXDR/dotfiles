@@ -335,11 +335,12 @@ plugins:load() {
     [[ -d "${bundle:h}" ]] || mkdir -p "${bundle:h}"
     source "$antidote"
     # `>|` truncates first, so a failed rebuild would leave an empty bundle that
-    # is newer than the list
-    if antidote bundle < "$list" >| "${bundle}.new"; then
-      command mv -f "${bundle}.new" "$bundle"
+    # is newer than the list. Shells started together after a list change all
+    # rebuild, so each writes its own file for mv to swap in.
+    if antidote bundle < "$list" >| "${bundle}.new.$$"; then
+      command mv -f "${bundle}.new.$$" "$bundle"
     else
-      command rm -f "${bundle}.new"
+      command rm -f "${bundle}.new.$$"
     fi
   fi
 
