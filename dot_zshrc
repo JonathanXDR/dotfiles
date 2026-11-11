@@ -51,11 +51,11 @@ if cmd:exists atuin; then
   ZSH_AUTOSUGGEST_STRATEGY=(history)
 fi
 
-# Figxit cannot place its list in Zed's terminal. It lowers an untouched
-# KEYTIMEOUT of 40 to 5, which leaves 50 ms for sudo's Esc Esc. Its Enter, Up and
-# Down fall back to accept-line and history search, so they clear the suggestion
-# as those do, instead of drawing it back onto the line that just ran.
-if [[ $TERM_PROGRAM != zed && -x "/Applications/Figxit.app/Contents/MacOS/figxit-engine" ]]; then
+# Figxit lowers an untouched KEYTIMEOUT of 40 to 5, which leaves 50 ms for sudo's
+# Esc Esc. Its Enter, Up and Down fall back to accept-line and history search, so
+# they clear the suggestion as those do, instead of drawing it back onto the line
+# that just ran.
+if [[ -x "/Applications/Figxit.app/Contents/MacOS/figxit-engine" ]]; then
   KEYTIMEOUT=30
   eval "$(/Applications/Figxit.app/Contents/MacOS/figxit-engine init zsh)"
   ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(figxit-enter figxit-up figxit-down)

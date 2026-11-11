@@ -152,10 +152,8 @@ interactive_checks login
 load "$(run /bin/zsh -i -c 'zsh -i -c "source \$PROBE"')"
 interactive_checks nested
 
-if [[ -x "$figxit_engine" ]]; then
-  load "$(run TERM_PROGRAM=zed /bin/zsh -i -c 'source "$PROBE"')"
-  check "Figxit stays out of Zed's terminal" same "${r[figxit]}" 0
-fi
+load "$(run TERM_PROGRAM=zed /bin/zsh -i -c 'source "$PROBE"')"
+interactive_checks zed
 
 out="$(run /bin/zsh -c 'print -r -- "${path[1]} $+functions[plugins:load]"')"
 check "zsh -c puts the mise shims first and skips .zshrc" same "$out" "${home}/.local/share/mise/shims 0"
