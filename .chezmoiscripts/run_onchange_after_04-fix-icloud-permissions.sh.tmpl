@@ -47,4 +47,6 @@ fi
 # Kube config: 600
 [[ -f "$ICLOUD/.kube/config" ]] && chmod 600 "$ICLOUD/.kube/config"
 
+_fix_dir "$ICLOUD/.display-handover-agent"
+
 _log success "Fixed permissions on the iCloud Drive symlink targets"

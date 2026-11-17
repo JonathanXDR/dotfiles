@@ -1,0 +1,146 @@
+#!/bin/bash
+set -euo pipefail
+{{ template "shell-helpers" . }}
+
+# Re-runs when the package sources or the LaunchAgent change. Tests do not go
+# into the binary, so the hash leaves them out:
+# {{ output "sh" "-c" (printf "cd '%s/tools/display-handover-agent' && find Package.swift Sources Support -type f ! -name '.*' -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -d' ' -f1" .chezmoi.sourceDir) | trim }}
+# {{ include "private_Library/LaunchAgents/com.jonathan-russ.display-handover-agent.plist.tmpl" | sha256sum }}
+#
+# The tools line re-runs it once the developer tools exist, so a Mac that
+# skipped the build without them still gets the agent. The config line re-runs
+# it when the iCloud config changes, because the agent reads it only at startup:
+# tools: {{ output "sh" "-c" "xcode-select -p >/dev/null 2>&1 && echo yes || echo no" | trim }}
+# config: {{ $config := joinPath .icloud_secrets ".display-handover-agent/config.json" }}{{ if stat $config }}{{ include $config | sha256sum }}{{ else }}missing{{ end }}
+
+label="com.jonathan-russ.display-handover-agent"
+package="{{ .chezmoi.sourceDir }}/tools/display-handover-agent"
+scratch="{{ .chezmoi.cacheDir }}/display-handover-agent"
+binary="${HOME}/.local/bin/display-handover-agent"
+plist="${HOME}/Library/LaunchAgents/${label}.plist"
+config="${HOME}/Library/Application Support/display-handover-agent/config.json"
+domain="gui/$(id -u)"
+
+# On SIGTERM the agent first reconnects a display it disconnected, and launchd
+# allows it 60 s for that
+stop_agent() {
+  launchctl print "${domain}/${label}" &>/dev/null || return 0
+  launchctl bootout "${domain}/${label}" 2>/dev/null || true
+  for _ in {1..75}; do
+    launchctl print "${domain}/${label}" &>/dev/null || return 0
+    sleep 1
+  done
+  _log error "Failed to stop the display handover agent within 75 s (see ~/Library/Logs/display-handover-agent.log)"
+  return 1
+}
+
+# Without a binary, launchd would load the plist at the next login and retry
+# the missing executable every 30 s. A disabled job stays unloaded, across
+# reboots too, until the install below enables it.
+hold_back_without_binary() {
+  [[ -x "$binary" ]] && return 0
+  launchctl bootout "${domain}/${label}" 2>/dev/null || true
+  launchctl disable "${domain}/${label}"
+}
+
+# A targeted `chezmoi apply` sorts its targets by path, so it can run this
+# script before it writes or removes config.json and the LaunchAgent. It would
+# then record the hashes above for an agent started with the old files. chezmoi
+# does not record a failed run, so the next apply runs it again. It also removes
+# a target that renders blank, so a blank config counts as missing.
+{{ $renderedConfig := includeTemplate "private_Library/Application Support/display-handover-agent/private_config.json.tmpl" . -}}
+want_config="{{ if trim $renderedConfig }}{{ $renderedConfig | sha256sum }}{{ end }}"
+want_plist="{{ includeTemplate "private_Library/LaunchAgents/com.jonathan-russ.display-handover-agent.plist.tmpl" . | sha256sum }}"
+written() { [[ -f "$1" && "$(shasum -a 256 < "$1" | cut -d' ' -f1)" == "$2" ]]; }
+up_to_date() {
+  if [[ -z "$want_config" ]]; then
+    [[ ! -e "$config" ]]
+    return
+  fi
+  written "$config" "$want_config" && written "$plist" "$want_plist"
+}
+if ! up_to_date; then
+  _log error "Failed to restart the display handover agent: its config.json or LaunchAgent does not match its source yet (the running agent is unchanged, apply those first or run a full chezmoi apply)"
+  exit 1
+fi
+
+# .chezmoiignore keeps chezmoi from installing the plist while the config is
+# missing, but leaves one installed earlier in place. launchd would restart
+# that agent every 30 s as it fails on the missing config.
+if [[ ! -s "$config" ]]; then
+  if [[ -f "$plist" ]]; then
+    stop_agent
+    rm -f "$plist"
+    _log warning "Stopped and removed the display handover agent (no config.json on iCloud Drive)"
+  else
+    _log warning "Skipped the display handover agent (no config.json on iCloud Drive yet)"
+  fi
+  exit 0
+fi
+
+# /usr/bin/swift exists on every Mac and opens the install dialog when the
+# developer tools are missing. xcode-select -p only checks.
+if ! xcode-select -p &>/dev/null; then
+  hold_back_without_binary
+  _log warning "Skipped the display handover agent (no developer tools, run 'xcode-select --install')"
+  exit 0
+fi
+
+_log info "Building the display handover agent…"
+build=(swift build -c release --product display-handover-agent --package-path "$package" --scratch-path "$scratch")
+if ! output="$("${build[@]}" 2>&1)"; then
+  printf '%s\n' "$output" >&2
+  hold_back_without_binary
+  _log error "Failed to build the display handover agent (the running agent is unchanged)"
+  exit 1
+fi
+
+# Copy and sign before the agent stops, so only the rename happens while it is
+# down. The signing identifier matches the bundle ID in the embedded Info.plist,
+# which is how the Local Network privacy setting recognizes the agent.
+mkdir -p "${binary%/*}"
+if ! { cp "$("${build[@]}" --show-bin-path)/display-handover-agent" "${binary}.new" &&
+  codesign --force --sign - --identifier "$label" "${binary}.new"; }; then
+  rm -f "${binary}.new"
+  hold_back_without_binary
+  _log error "Failed to sign the display handover agent (the running agent is unchanged)"
+  exit 1
+fi
+
+if ! stop_agent; then
+  rm -f "${binary}.new"
+  exit 1
+fi
+
+if ! mv -f "${binary}.new" "$binary"; then
+  _log error "Failed to install the display handover agent (it is stopped, run chezmoi apply again)"
+  exit 1
+fi
+
+launchctl enable "${domain}/${label}"
+
+# bootout returns before launchd has finished removing the job, and a
+# bootstrap that arrives too early fails with "Input/output error"
+loaded=false
+for _ in 1 2 3 4 5; do
+  if launchctl bootstrap "$domain" "$plist" 2>/dev/null; then
+    loaded=true
+    break
+  fi
+  sleep 1
+done
+
+if [[ "$loaded" != true ]]; then
+  _log error "Failed to start the display handover agent (run 'launchctl bootstrap ${domain} ${plist}' to see why)"
+  exit 1
+fi
+
+# launchd accepts the job even when the agent exits at once, and then restarts it every 30 s
+sleep 5
+job="$(launchctl print "${domain}/${label}" 2>/dev/null || true)"
+if [[ "$job" != *"state = running"* ]]; then
+  _log error "Failed to keep the display handover agent running (see ~/Library/Logs/display-handover-agent.log)"
+  exit 1
+fi
+
+_log success "Installed and started the display handover agent (${label})"

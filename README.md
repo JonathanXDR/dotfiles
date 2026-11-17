@@ -262,10 +262,12 @@ The source maps onto `$HOME` like this:
 │   └── private_plugins/                     # Claude Code plugin and marketplace state
 ├── private_Library/                         # ~/Library (0700)
 │   ├── Application Support/
-│   │   └── Code/User/                       # VS Code settings & keybindings
-│   └── LaunchAgents/                        # Runaway watcher agent
+│   │   ├── Code/User/                       # VS Code settings & keybindings
+│   │   └── display-handover-agent/          # Display handover agent config (0600, rendered from iCloud)
+│   └── LaunchAgents/                        # Runaway watcher and display handover agents
 │
 ├── tests/                                   # Shell regression tests (not copied to $HOME)
+├── tools/display-handover-agent/            # Display handover agent, Swift (built by a run script, not copied to $HOME)
 └── Brewfile                                 # Homebrew packages
 ```
 

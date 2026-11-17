@@ -67,105 +67,113 @@ Dotfiles/
 │
 │   # chezmoi configuration
 │
-├── .chezmoi.toml.tmpl                                   # User config (iCloud config.toml or prompts)
-├── .chezmoidata.toml                                    # Shared non-secret defaults
+├── .chezmoi.toml.tmpl                                       # User config (iCloud config.toml or prompts)
+├── .chezmoidata.toml                                        # Shared non-secret defaults
 ├── .chezmoidata/
-│   ├── skills.toml                                      # Agent Skills inventory (name, source, licensing, watched owners)
-│   ├── skills-owners.toml                               # Skills of the watched owners (written by skills:sync)
-│   └── zed.toml                                         # Installed Zed extensions (written by zed:dump)
-├── .chezmoiignore                                       # Files excluded from $HOME
+│   ├── skills.toml                                          # Agent Skills inventory (name, source, licensing, watched owners)
+│   ├── skills-owners.toml                                   # Skills of the watched owners (written by skills:sync)
+│   └── zed.toml                                             # Installed Zed extensions (written by zed:dump)
+├── .chezmoiignore                                           # Files excluded from $HOME
 ├── .chezmoitemplates/
-│   ├── keychain                                         # Keychain lookup (list "<id>" "<account>" <keychain> <field>)
-│   ├── keychain-flag                                    # The `security` flag that matches the lookup field
-│   └── shell-helpers                                    # Reusable bash helpers for run scripts
+│   ├── keychain                                             # Keychain lookup (list "<id>" "<account>" <keychain> <field>)
+│   ├── keychain-flag                                        # The `security` flag that matches the lookup field
+│   └── shell-helpers                                        # Reusable bash helpers for run scripts
 │
 │   # Run scripts (run by chezmoi apply, numbered for ordering)
 │
 ├── .chezmoiscripts/
-│   ├── run_before_00-*                                  # Unlock dotfiles keychain (every apply)
-│   ├── run_once_before_01-*                             # Install Homebrew
-│   ├── run_once_before_02-*                             # Import keychain tokens from iCloud
-│   ├── run_onchange_after_03-*                          # Install Homebrew packages (re-runs on Brewfile change)
-│   ├── run_onchange_after_04-*                          # Fix iCloud symlink permissions (re-runs on config change)
-│   ├── run_onchange_after_06-*                          # Install language runtimes and global CLI packages (re-runs on list change)
-│   ├── run_once_after_07-*                              # Fix zsh completion permissions
-│   ├── run_after_08-*                                   # Export keychain to iCloud (every apply)
-│   ├── run_after_09-*                                   # Install /etc/hosts from ~/.config/hosts (every apply, self-healing)
-│   ├── run_after_10-*                                   # Clone and link the Agent Skills, fetch licensed ones, prune
-│   ├── run_after_11-*                                   # Install the Hunspell dictionaries (every apply, self-healing)
-│   └── run_onchange_after_12-*                          # Load the runaway watcher LaunchAgent (re-runs on agent change)
+│   ├── run_before_00-*                                      # Unlock dotfiles keychain (every apply)
+│   ├── run_once_before_01-*                                 # Install Homebrew
+│   ├── run_once_before_02-*                                 # Import keychain tokens from iCloud
+│   ├── run_onchange_after_03-*                              # Install Homebrew packages (re-runs on Brewfile change)
+│   ├── run_onchange_after_04-*                              # Fix iCloud symlink permissions (re-runs on config change)
+│   ├── run_onchange_after_06-*                              # Install language runtimes and global CLI packages (re-runs on list change)
+│   ├── run_once_after_07-*                                  # Fix zsh completion permissions
+│   ├── run_after_08-*                                       # Export keychain to iCloud (every apply)
+│   ├── run_after_09-*                                       # Install /etc/hosts from ~/.config/hosts (every apply, self-healing)
+│   ├── run_after_10-*                                       # Clone and link the Agent Skills, fetch licensed ones, prune
+│   ├── run_after_11-*                                       # Install the Hunspell dictionaries (every apply, self-healing)
+│   ├── run_onchange_after_12-*                              # Load the runaway watcher LaunchAgent (re-runs on agent change)
+│   └── run_onchange_after_13-*                              # Build, sign and load the display handover agent (re-runs on source, agent or config change)
 │
 │   # iCloud Drive symlinks (point $HOME directories at iCloud)
 │
-├── symlink_dot_ssh.tmpl                                 # ~/.ssh → iCloud
-├── private_dot_gnupg/                                   # ~/.gnupg/* → iCloud (6 symlinks)
+├── symlink_dot_ssh.tmpl                                     # ~/.ssh → iCloud
+├── private_dot_gnupg/                                       # ~/.gnupg/* → iCloud (6 symlinks)
 │   ├── symlink_common.conf.tmpl
 │   ├── symlink_trustdb.gpg.tmpl
 │   ├── symlink_sshcontrol.tmpl
 │   ├── symlink_private-keys-v1.d.tmpl
 │   ├── symlink_public-keys.d.tmpl
 │   └── symlink_openpgp-revocs.d.tmpl
-├── private_dot_kube/                                    # ~/.kube/config → iCloud
+├── private_dot_kube/                                        # ~/.kube/config → iCloud
 │   └── symlink_config.tmpl
 │
 │   # Shell configuration (sourced on every terminal open)
 │
-├── dot_zshenv                                           # PATH for non-interactive shells (mise shims, locale)
-├── dot_zprofile                                         # Restores the mise shims after macOS path_helper (login shells)
-├── dot_zshrc                                            # Shell orchestrator
-├── private_dot_exports.tmpl                             # Env vars, history, zsh options (0600, reads the keychain)
-├── dot_functions                                        # Shell functions
-├── dot_aliases                                          # Command aliases
-├── dot_plugins                                          # Oh My Zsh plugin list, compiled by antidote
-├── dot_completions                                      # zsh completions and plugins
+├── dot_zshenv                                               # PATH for non-interactive shells (mise shims, locale)
+├── dot_zprofile                                             # Restores the mise shims after macOS path_helper (login shells)
+├── dot_zshrc                                                # Shell orchestrator
+├── private_dot_exports.tmpl                                 # Env vars, history, zsh options (0600, reads the keychain)
+├── dot_functions                                            # Shell functions
+├── dot_aliases                                              # Command aliases
+├── dot_plugins                                              # Oh My Zsh plugin list, compiled by antidote
+├── dot_completions                                          # zsh completions and plugins
 │
 │   # Tool configuration
 │
-├── dot_gitconfig.tmpl                                   # Git user, GPG signing, LFS, pull strategy
-├── dot_gitignore_global                                 # Global gitignore (referenced by dot_gitconfig.tmpl)
-├── private_dot_npmrc.tmpl                               # npm registry tokens (0600, from keychain)
-├── private_dot_wakatime.cfg.tmpl                        # WakaTime API key (0600, from keychain)
-├── private_dot_atuin/config.toml.tmpl                   # Atuin history filter, built from history_ignore
-├── dot_local/private_share/.keep                        # Keeps ~/.local/share at 0700, which holds the Agent Skills clones
-├── dot_local/bin/executable_runaway-watch               # Flags stuck processes and a busy GPU, run by launchd every 2 min
-├── dot_local/bin/executable_claude-account-browser      # Opens a URL in the Chrome profile of a Claude Code account
+├── dot_gitconfig.tmpl                                       # Git user, GPG signing, LFS, pull strategy
+├── dot_gitignore_global                                     # Global gitignore (referenced by dot_gitconfig.tmpl)
+├── private_dot_npmrc.tmpl                                   # npm registry tokens (0600, from keychain)
+├── private_dot_wakatime.cfg.tmpl                            # WakaTime API key (0600, from keychain)
+├── private_dot_atuin/config.toml.tmpl                       # Atuin history filter, built from history_ignore
+├── dot_local/private_share/.keep                            # Keeps ~/.local/share at 0700, which holds the Agent Skills clones
+├── dot_local/bin/executable_runaway-watch                   # Flags stuck processes and a busy GPU, run by launchd every 2 min
+├── dot_local/bin/executable_claude-account-browser          # Opens a URL in the Chrome profile of a Claude Code account
 ├── dot_config/
-│   ├── hosts                                            # /etc/hosts source
-│   ├── mise/config.toml                                 # Language runtimes + global CLI packages
-│   ├── runaway-watch/ignore                             # Heavy work the runaway watcher never flags as busy
-│   └── zed/private_settings.json.tmpl                   # Zed editor + MCP server keys (0600, from keychain)
-├── private_dot_claude/                                  # ~/.claude/ (0700)
-│   ├── private_CLAUDE.md                                # Global Claude Code instructions (all projects)
-│   ├── private_settings.json.tmpl                       # Claude Code user settings (plugins, marketplaces, permissions, hooks)
-│   ├── private_hooks/                                   # ~/.claude/hooks/ (0700)
-│   │   ├── private_executable_block-git-push.sh         # PreToolUse guard, blocks unrequested git push
-│   │   ├── private_executable_block-git-destructive.sh  # PreToolUse guard, blocks git commands that discard work
-│   │   ├── private_executable_check-commit-message.sh   # PreToolUse guard, validates the commit message
-│   │   ├── private_executable_block-path-access.sh.tmpl # PreToolUse guard, blocks configured paths on every tool
-│   │   ├── private_executable_guard-live-sessions.sh    # Session guard, keeps two processes off one conversation
-│   │   ├── private_executable_lock-memory-writes.sh     # Tool guard, makes concurrent memory writes exclusive
-│   │   ├── private_executable_scan-written-secrets.sh   # PostToolUse guard, sonar secrets scan of written files
-│   │   └── private_executable_warn-denied-tools.sh      # SessionStart notice, project settings that withdraw core tools
-│   └── private_plugins/                                 # ~/.claude/plugins/ (0700)
-│       ├── create_installed_plugins.json.tmpl           # Claude Code plugin install state
-│       └── create_known_marketplaces.json.tmpl          # Claude Code marketplace registry
+│   ├── hosts                                                # /etc/hosts source
+│   ├── mise/config.toml                                     # Language runtimes + global CLI packages
+│   ├── runaway-watch/ignore                                 # Heavy work the runaway watcher never flags as busy
+│   └── zed/private_settings.json.tmpl                       # Zed editor + MCP server keys (0600, from keychain)
+├── private_dot_claude/                                      # ~/.claude/ (0700)
+│   ├── private_CLAUDE.md                                    # Global Claude Code instructions (all projects)
+│   ├── private_settings.json.tmpl                           # Claude Code user settings (plugins, marketplaces, permissions, hooks)
+│   ├── private_hooks/                                       # ~/.claude/hooks/ (0700)
+│   │   ├── private_executable_block-git-push.sh             # PreToolUse guard, blocks unrequested git push
+│   │   ├── private_executable_block-git-destructive.sh      # PreToolUse guard, blocks git commands that discard work
+│   │   ├── private_executable_check-commit-message.sh       # PreToolUse guard, validates the commit message
+│   │   ├── private_executable_block-path-access.sh.tmpl     # PreToolUse guard, blocks configured paths on every tool
+│   │   ├── private_executable_guard-live-sessions.sh        # Session guard, keeps two processes off one conversation
+│   │   ├── private_executable_lock-memory-writes.sh         # Tool guard, makes concurrent memory writes exclusive
+│   │   ├── private_executable_scan-written-secrets.sh       # PostToolUse guard, sonar secrets scan of written files
+│   │   └── private_executable_warn-denied-tools.sh          # SessionStart notice, project settings that withdraw core tools
+│   └── private_plugins/                                     # ~/.claude/plugins/ (0700)
+│       ├── create_installed_plugins.json.tmpl               # Claude Code plugin install state
+│       └── create_known_marketplaces.json.tmpl              # Claude Code marketplace registry
 │
 │   # IDE settings
 │
 ├── private_Library/Application Support/Code/User/
-│   ├── settings.json.tmpl                               # VS Code settings (home dir templated for Java/Gradle paths)
-│   └── keybindings.json                                 # VS Code keybindings
+│   ├── settings.json.tmpl                                   # VS Code settings (home dir templated for Java/Gradle paths)
+│   └── keybindings.json                                     # VS Code keybindings
+├── private_Library/Application Support/display-handover-agent/
+│   └── private_config.json.tmpl                             # Display handover agent config (0600), rendered from the copy on iCloud Drive
 ├── private_Library/LaunchAgents/
-│   └── com.jonathan-russ.runaway-watch.plist.tmpl       # Runs runaway-watch every 2 min (home dir templated)
+│   ├── com.jonathan-russ.display-handover-agent.plist.tmpl  # Keeps the display handover agent running (home dir templated)
+│   └── com.jonathan-russ.runaway-watch.plist.tmpl           # Runs runaway-watch every 2 min (home dir templated)
 │
 │   # Tests (not copied to $HOME)
 │
-├── tests/claude-accounts.zsh                            # Regression tests for the claude:* functions, with stubs
-├── tests/shell-startup.zsh                              # Startup regression tests: keys, history filter, PATH, hooks
+├── tests/claude-accounts.zsh                                # Regression tests for the claude:* functions, with stubs
+├── tests/shell-startup.zsh                                  # Startup regression tests: keys, history filter, PATH, hooks
+│
+│   # Tools built by a run script (not copied to $HOME)
+│
+├── tools/display-handover-agent/                            # Swift package of the display handover agent, with its tests
 │
 │   # Package list (read by a run script, not copied to $HOME)
 │
-└── Brewfile                                             # Homebrew packages
+└── Brewfile                                                 # Homebrew packages
 ```
 
 ## 🔑 Key Concepts
@@ -595,6 +603,9 @@ Every script includes `{{ template "shell-helpers" . }}`, which provides shared 
 | Symlink a new directory to iCloud    | Create a `symlink_dot_<name>.tmpl` with the iCloud path                                            |
 | Add a new setup step                 | Create a numbered `run_*` script in `.chezmoiscripts/`                                             |
 | Modify shared script helpers         | `.chezmoitemplates/shell-helpers`                                                                  |
+| Change the display handover agent    | `tools/display-handover-agent/`, then `chezmoi apply` (script 13 rebuilds and restarts it)         |
+| Test the display handover agent      | `swift test --package-path tools/display-handover-agent`                                           |
+| Pause the display handover agent     | `display-handover-agent status`, `pause [minutes]`, `resume`, `reconnect`                          |
 
 ## 💡 Design Decisions
 
@@ -634,6 +645,7 @@ Every script includes `{{ template "shell-helpers" . }}`, which provides shared 
 | **bun's completion goes on `fpath`, never sourced**            | `~/.bun/_bun` is a `#compdef bun` file, but it ends in `if ! command -v compinit; then autoload -U compinit && compinit; fi`. Sourced before `.completions` has loaded `compinit`, that probe fails and bun runs a full uncached `compinit` (460 ms). Putting `~/.bun` on `fpath` gives the same completion through the cached dump, with no load order to get right.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **`run:daily` update gating**                                  | The `run:daily` wrapper puts `mise:update`, `brew:check`, and `plugins:update` behind a stamp file in `~/.cache/daily/`, with a `(N.mh-24^ms-0)` freshness check that costs zero forks and ignores a future-dated stamp. Keeps slow update commands off every shell startup. Each run starts in its own session with no terminal (perl `setsid`), so no prompt waits on it and its output waits for the next shell. A plain background job got stopped when it touched the tty, as antidote 2.3.0 does, and spun for days. A watchdog sends TERM and then KILL after `RUN_DAILY_TIMEOUT` seconds (300 by default). `mise:update` runs its upgrade at `MISE_LOG_LEVEL=warn`. Since mise 2026.9.2 a captured upgrade narrates version resolution one line per tool, so an ordinary day arrives as 40 lines of progress at the default level and 2 at `warn`.                                         |
 | **A runaway watcher, not CPU alerts**                          | A stuck process holds one core, a tenth of this Mac, so overall CPU thresholds never fire for it. `runaway-watch` runs from launchd every two minutes, compares each process's CPU time with the last `ps` sample, and flags one averaging 80% of a core for 15 minutes, a process group suspended for 30, and GPU load at 80% for 15. A streak survives dips to half that rate, because a loaded machine starves even a spinning process, and a new run at full rate restarts a streak that averages less. It only notifies, and every new terminal repeats the list, because a Focus mode files the notification away silently. GPU time per process needs root, so that alert names the busiest CPU processes. CPU time is counted per PID, so a loop that keeps starting short-lived commands goes unflagged.                                                                                  |
+| **A compiled display handover agent, not a script**            | `display-handover-agent` takes the main Dell monitor off the desktop during HDMI use. It has to run as a long-lived process that receives IOKit sleep and wake notifications. The Sync Box certificate has to be checked against its pinned CA, and the LibreSSL builds behind macOS `curl` and Python reject its date encoding. The Local Network privacy setting needs a stable signing identifier. So the agent is a Swift package in `tools/`, which script 13 builds into the chezmoi cache, signs ad hoc and installs at `~/.local/bin`. Its hardware IDs live on iCloud Drive, and chezmoi renders a local `0600` copy of `config.json`, because the privacy protection on `~/Documents` keeps a LaunchAgent from reading through a symlink. Its Sync Box token stays in the login keychain, which stays unlocked when the dotfiles keychain locks on sleep.                                |
 | **`/etc/hosts` is a root-owned copy**                          | chezmoi links `~/.config/hosts` to `dot_config/hosts`. Script 09 installs that file over `/etc/hosts` as `root:wheel 0644`. It was a symlink into `$HOME` until it turned out to hand every process running as this user the ability to rewrite system name resolution with no sudo, which the system expects to be root-only. The script runs on every apply rather than behind a content hash, because the state it depends on is `/etc/hosts` itself, which a macOS upgrade or an installer can replace. `cmp` follows a symlink and would call the old layout identical, so a symlink is tested for separately, and the new file is written beside the target and renamed, because renaming over a symlink replaces the link rather than writing through it.                                                                                                                                   |
 | **Global Claude instructions as `private_CLAUDE.md`**          | Claude Code loads `~/.claude/CLAUDE.md` at the start of every session in every project, before any repository `CLAUDE.md`, so the file carries only cross-project rules and lets repository conventions win. The `private_` prefix keeps the target file at `0600` like the rest of `~/.claude`, and it also keeps the source name clear of the global gitignore's `**/CLAUDE.md` rule, which would otherwise ignore the source file in this very repo. Like the settings template, the file is written as a copy, so edits made directly to the target need `chezmoi add` to reach the source.                                                                                                                                                                                                                                                                                                    |
 | **A PreToolUse hook guards `git push`**                        | "Never push unless explicitly asked" needs mechanical enforcement, because CLAUDE.md instructions are advisory and the `claude` alias runs with `--dangerously-skip-permissions`, which skips `ask` permission rules. A `deny` rule would block requested pushes too. The settings filter narrows the hook to git commands as a fast path, and the script itself inspects the actual command, blocks any `git push` invocation (including flagged forms such as `git -C <path> push`) with exit code 2, and tells Claude to re-run the command with `CLAUDE_PUSH_OK=1` once the user has explicitly asked for the push. The `private_executable_` prefix renders the script at `0700`.                                                                                                                                                                                                             |

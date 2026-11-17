@@ -1,0 +1,5 @@
+{{- /* A rendered copy, not a symlink, because macOS privacy protection keeps the LaunchAgent out of ~/Documents */ -}}
+{{- $config := joinPath .icloud_secrets ".display-handover-agent/config.json" -}}
+{{- if stat $config -}}
+{{ include $config }}
+{{- end -}}

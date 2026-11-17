@@ -4,3 +4,9 @@ LICENSE
 Brewfile
 tests
 tools
+
+{{ $agentConfig := joinPath .icloud_secrets ".display-handover-agent/config.json" -}}
+{{ if not (and (stat $agentConfig) (trim (include $agentConfig))) -}}
+# A missing or blank iCloud config leaves the agent without config.json, and launchd would restart it every 30 s
+Library/LaunchAgents/com.jonathan-russ.display-handover-agent.plist
+{{ end -}}

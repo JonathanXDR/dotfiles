@@ -285,10 +285,11 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 # ---- chezmoi ----
-# Templates that inline a keychain secret. `chezmoi add` on one of those targets
-# replaces the .tmpl with the rendered file, tokens and all, and this repository
-# is public.
+# Templates that inline a keychain secret or a private iCloud file. `chezmoi add`
+# on one of those targets replaces the .tmpl with the rendered file, tokens and
+# all, and this repository is public.
 private_dot_exports
 private_dot_npmrc
 private_dot_wakatime.cfg
 dot_config/zed/private_settings.json
+private_Library/Application Support/display-handover-agent/private_config.json
