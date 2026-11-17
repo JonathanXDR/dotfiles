@@ -293,7 +293,7 @@ path = "skills/database-migrations"
 
 [agent_skills.defuddle]
 repo = "kepano/obsidian-skills"
-path = "skills/defuddle"
+path = "plugins/obsidian/skills/defuddle"
 
 [agent_skills.deploy-to-vercel]
 repo = "vercel-labs/agent-skills"
