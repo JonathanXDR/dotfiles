@@ -730,7 +730,7 @@ repo = "riekelt/multi-agent-review"
 path = "plugins/multi-agent-review/skills/multi-agent-review"
 
 [agent_skills.nanobanana]
-repo = "GargantuaX/openskills"
+repo = "ReScienceLab/opc-skills"
 path = "skills/nanobanana"
 
 [agent_skills.nestjs-best-practices]
