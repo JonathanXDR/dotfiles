@@ -658,10 +658,6 @@ path = ".claude/skills/interface-design"
 repo = "jakubkrehel/skills"
 path = "skills/interface-review"
 
-[agent_skills.investigate]
-repo = "garrytan/gstack"
-path = "investigate"
-
 [agent_skills.kami]
 repo = "tw93/Kami"
 path = "skills/kami"
