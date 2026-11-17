@@ -115,6 +115,8 @@ alias:safe kro="kiro"
 # Locks only with "Require password after sleep" set
 alias:safe afk='pmset displaysleepnow'
 
+cmd:exists display-handover-agent && alias:safe dha='display-handover-agent'
+
 alias:safe show="defaults write com.apple.finder AppleShowAllFiles -bool true && killall Finder"
 alias:safe hide="defaults write com.apple.finder AppleShowAllFiles -bool false && killall Finder"
 
