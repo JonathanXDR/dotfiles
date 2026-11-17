@@ -82,7 +82,8 @@ Dotfiles/
 │   # Run scripts (run by chezmoi apply, numbered for ordering)
 │
 ├── .chezmoiscripts/
-│   ├── run_before_00-*                                      # Unlock dotfiles keychain (every apply)
+│   ├── run_before_00-check-*                                # Stop the apply on a copy of this repository nested inside it (every apply)
+│   ├── run_before_00-unlock-*                               # Unlock dotfiles keychain (every apply)
 │   ├── run_once_before_01-*                                 # Install Homebrew
 │   ├── run_once_before_02-*                                 # Import keychain tokens from iCloud
 │   ├── run_onchange_after_03-*                              # Install Homebrew packages (re-runs on Brewfile change)
@@ -545,7 +546,7 @@ Scripts in `.chezmoiscripts/` are numbered for deterministic ordering. The filen
 
 | Prefix                | Behavior                            | Example                                                                                    |
 | --------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ |
-| `run_before_`         | Every `chezmoi apply`, before files | Unlock dotfiles keychain                                                                   |
+| `run_before_`         | Every `chezmoi apply`, before files | Stop on a nested copy of this repository, unlock dotfiles keychain                         |
 | `run_once_before_`    | Once, before files are copied       | Install Homebrew, import keychain                                                          |
 | `run_onchange_after_` | Re-runs when script content changes | Homebrew packages (Brewfile hash embedded in script)                                       |
 | `run_once_after_`     | Once, after files are copied        | Fix zsh completion permissions                                                             |

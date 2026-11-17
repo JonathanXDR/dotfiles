@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+{{ template "shell-helpers" . }}
+
+# chezmoi reads .chezmoidata in every directory below the source directory,
+# including dot directories and ignored paths, so a nested copy of this
+# repository, such as a Delta worktree, silently overrides the real data
+SOURCE={{ .chezmoi.sourceDir | shellQuote }}
+nested="$(find "$SOURCE" \( -name .git -o -name .build \) -prune -o -path "${SOURCE}/*/.chezmoi*" -print -quit)"
+if [[ -n "$nested" ]]; then
+  copy="${nested%/*}"
+  _log error "Stopped the apply: ${copy#"${SOURCE}/"} holds chezmoi source files whose data would override this repository's (move it out of ${SOURCE})"
+  exit 1
+fi
