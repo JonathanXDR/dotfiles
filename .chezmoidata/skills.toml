@@ -672,7 +672,7 @@ path = "plugins/principal-engineer/skills/keeping-one-source-of-truth"
 
 [agent_skills.kubernetes-specialist]
 repo = "Jeffallan/claude-skills"
-path = "skills/kubernetes-specialist"
+path = "plugin/skills/kubernetes-specialist"
 
 [agent_skills.land-and-deploy]
 repo = "garrytan/gstack"
