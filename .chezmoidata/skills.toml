@@ -56,6 +56,9 @@ path = "skills/ai-seo"
 repo = "bitwarden/ai-plugins"
 path = "plugins/claude-retrospective/skills/analyzing-git-sessions"
 
+[agent_skills.anatomy]
+repo = "wheresryan22/anatomy"
+
 [agent_skills.animate]
 repo = "emilkowalski/skills"
 path = "skills/animate"
@@ -83,6 +86,10 @@ path = "archify"
 [agent_skills.architect]
 repo = "cursor/plugins"
 path = "pstack/skills/architect"
+
+[agent_skills.arena]
+repo = "backnotprop/pstack"
+path = "skills/arena"
 
 [agent_skills.ask-sonner]
 repo = "emilkowalski/skills"
@@ -132,6 +139,10 @@ path = "skills/baoyu-url-to-markdown"
 repo = "garrytan/gstack"
 path = "benchmark"
 
+[agent_skills.benchmark-checklist]
+repo = "backnotprop/pstack"
+path = "skills/benchmark-checklist"
+
 [agent_skills.benchmark-models]
 repo = "garrytan/gstack"
 path = "benchmark-models"
@@ -164,12 +175,20 @@ path = "skills/better-ui"
 repo = "jakubkrehel/skills"
 path = "skills/better-writing"
 
+[agent_skills.blast-radius]
+repo = "backnotprop/pstack"
+path = "skills/blast-radius"
+
 [agent_skills.book-study]
 repo = "sanyuan0704/sanyuan-skills"
 path = "skills/book-study"
 
 [agent_skills.book-to-skill]
 repo = "virgiliojr94/book-to-skill"
+
+[agent_skills.brag]
+repo = "latent-spaces/brag"
+path = "skills/brag"
 
 [agent_skills.brainstorming]
 repo = "obra/superpowers"
@@ -183,6 +202,10 @@ path = ".claude/skills/brand"
 repo = "Leonxlnx/imagegen-skills"
 path = "skills/brandkit"
 
+[agent_skills.break]
+repo = "jakubkrehel/skills"
+path = "skills/break"
+
 [agent_skills.browse]
 repo = "garrytan/gstack"
 path = "browse"
@@ -190,6 +213,14 @@ path = "browse"
 [agent_skills.browser-use]
 repo = "browser-use/browser-use"
 path = "skills/browser-use"
+
+[agent_skills.build-design]
+repo = "jakubkrehel/skills"
+path = "skills/build-design"
+
+[agent_skills.bun-runtime]
+repo = "affaan-m/ECC"
+path = "skills/bun-runtime"
 
 [agent_skills.canary]
 repo = "garrytan/gstack"
@@ -202,6 +233,14 @@ path = "careful"
 [agent_skills.caveman]
 repo = "JuliusBrussee/caveman"
 path = "skills/caveman"
+
+[agent_skills.cf-cli]
+repo = "cloudflare/skills"
+path = "skills/cf-cli"
+
+[agent_skills.choreograph]
+repo = "emilkowalski/skills"
+path = "skills/choreograph"
 
 [agent_skills.claude-api]
 repo = "anthropics/skills"
@@ -267,6 +306,10 @@ path = "skills/copywriting"
 repo = "addyosmani/web-quality-skills"
 path = "skills/core-web-vitals"
 
+[agent_skills.correct]
+repo = "backnotprop/pstack"
+path = "skills/correct"
+
 [agent_skills.council]
 repo = "warpdotdev/common-skills"
 path = ".agents/skills/council"
@@ -275,9 +318,17 @@ path = ".agents/skills/council"
 repo = "vuejs-ai/skills"
 path = "skills/create-adaptable-composable"
 
+[agent_skills.create-game-assets]
+repo = "gamedev-skills/awesome-gamedev-agent-skills"
+path = "skills/disciplines/create-game-assets"
+
 [agent_skills.create-skill]
 repo = "n8n-io/n8n"
 path = ".agents/skills/create-skill"
+
+[agent_skills.create-verification-skill]
+repo = "backnotprop/pstack"
+path = "skills/create-verification-skill"
 
 [agent_skills.cross-critique]
 repo = "warpdotdev/common-skills"
@@ -411,6 +462,10 @@ path = "skills/email-best-practices"
 repo = "emilkowalski/skills"
 path = "skills/emil-design-eng"
 
+[agent_skills.engineering-blog-post]
+repo = "samber/developer-relations-skills"
+path = "skills/engineering-blog-post"
+
 [agent_skills.enhance-prompt]
 repo = "google-labs-code/stitch-skills"
 path = "plugins/stitch-utilities/skills/enhance-prompt"
@@ -418,6 +473,10 @@ path = "plugins/stitch-utilities/skills/enhance-prompt"
 [agent_skills.executing-plans]
 repo = "obra/superpowers"
 path = "skills/executing-plans"
+
+[agent_skills.explain-interface]
+repo = "jakubkrehel/skills"
+path = "skills/explain-interface"
 
 [agent_skills.find-animation-opportunities]
 repo = "emilkowalski/skills"
@@ -458,6 +517,10 @@ path = "skills/firecrawl"
 [agent_skills.firecrawl-crawl]
 repo = "firecrawl/cli"
 path = "skills/firecrawl-crawl"
+
+[agent_skills.firecrawl-developer-index]
+repo = "firecrawl/cli"
+path = "skills/firecrawl-developer-index"
 
 [agent_skills.firecrawl-download]
 repo = "firecrawl/cli"
@@ -658,6 +721,10 @@ path = ".claude/skills/interface-design"
 repo = "jakubkrehel/skills"
 path = "skills/interface-review"
 
+[agent_skills.interrogate]
+repo = "backnotprop/pstack"
+path = "skills/interrogate"
+
 [agent_skills.kami]
 repo = "tw93/Kami"
 path = "skills/kami"
@@ -697,9 +764,17 @@ repo = "JonathanXDR/lean-comments"
 repo = "garrytan/gstack"
 path = "learn"
 
+[agent_skills.learn-taste]
+repo = "emilkowalski/skills"
+path = "skills/learn-taste"
+
 [agent_skills.loom-transcript]
 repo = "n8n-io/n8n"
 path = ".agents/skills/loom-transcript"
+
+[agent_skills.maintain-verification-skill]
+repo = "backnotprop/pstack"
+path = "skills/maintain-verification-skill"
 
 [agent_skills.make-pdf]
 repo = "garrytan/gstack"
@@ -805,6 +880,10 @@ path = "codex-rs/skills/src/assets/samples/openai-docs"
 repo = "riekelt/principal-engineer"
 path = "plugins/principal-engineer/skills/operating-safely"
 
+[agent_skills.oss-launch]
+repo = "samber/developer-relations-skills"
+path = "skills/oss-launch"
+
 [agent_skills.pair-agent]
 repo = "garrytan/gstack"
 path = "pair-agent"
@@ -824,6 +903,10 @@ path = "skills/performance"
 [agent_skills.performance-optimization]
 repo = "addyosmani/agent-skills"
 path = "skills/performance-optimization"
+
+[agent_skills.pixijs-rendering]
+repo = "gamedev-skills/awesome-gamedev-agent-skills"
+path = "skills/web-engines/pixijs-rendering"
 
 [agent_skills.plan-ceo-review]
 repo = "garrytan/gstack"
@@ -900,6 +983,10 @@ path = "prisma-client-api"
 [agent_skills.prisma-database-setup]
 repo = "prisma/skills"
 path = "prisma-database-setup"
+
+[agent_skills.prisma-orm-setup]
+repo = "prisma/skills"
+path = "prisma-orm-setup"
 
 [agent_skills.prisma-upgrade-v7]
 repo = "prisma/skills"
@@ -1004,6 +1091,10 @@ path = "skills/security-audit"
 repo = "zhaono1/agent-playbook"
 path = "skills/self-improving-agent"
 
+[agent_skills.semgrep]
+repo = "trailofbits/skills"
+path = "plugins/static-analysis/skills/semgrep"
+
 [agent_skills.seo]
 repo = "AgriciDaniel/claude-seo"
 path = "skills/seo"
@@ -1060,10 +1151,18 @@ path = "spec"
 repo = "n8n-io/n8n"
 path = ".agents/skills/spec-driven-development"
 
+[agent_skills.stageshow]
+repo = "benjitaylor/skills"
+path = "stageshow"
+
 # Private because it documents an employer's internal stack, and this repository
 # is public
 [agent_skills.stake-engine-slot-development]
 git = "git@github.com:JonathanXDR/stake-engine-slot-development-skill.git"
+
+[agent_skills.state-machine]
+repo = "jakubkrehel/skills"
+path = "skills/state-machine"
 
 [agent_skills.stop-slop]
 repo = "hardikpandya/stop-slop"
@@ -1084,6 +1183,10 @@ path = "skills/supabase-postgres-best-practices"
 repo = "sveltejs/ai-tools"
 path = "tools/skills/svelte-code-writer"
 
+[agent_skills.svelte-core-bestpractices]
+repo = "sveltejs/ai-tools"
+path = "tools/skills/svelte-core-bestpractices"
+
 [agent_skills.systematic-debugging]
 repo = "obra/superpowers"
 path = "skills/systematic-debugging"
@@ -1100,6 +1203,14 @@ path = "plugins/frontend-mobile-development/skills/tailwind-design-system"
 repo = "DeckardGer/tanstack-agent-skills"
 path = "skills/tanstack-query"
 
+[agent_skills.tech-talk-outline]
+repo = "samber/developer-relations-skills"
+path = "skills/tech-talk-outline"
+
+[agent_skills.technical-video-script]
+repo = "samber/developer-relations-skills"
+path = "skills/technical-video-script"
+
 [agent_skills.technical-writing]
 repo = "riekelt/technical-writer"
 path = "plugins/technical-writer/skills/technical-writing"
@@ -1112,6 +1223,38 @@ path = "skills/test-driven-development"
 repo = "cursor/plugins"
 path = "thermos/skills/thermo-nuclear-code-quality-review"
 
+[agent_skills.threejs-fundamentals]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-fundamentals"
+
+[agent_skills.threejs-geometry]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-geometry"
+
+[agent_skills.threejs-interaction]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-interaction"
+
+[agent_skills.threejs-lighting]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-lighting"
+
+[agent_skills.threejs-loaders]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-loaders"
+
+[agent_skills.threejs-materials]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-materials"
+
+[agent_skills.threejs-postprocessing]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-postprocessing"
+
+[agent_skills.threejs-shaders]
+repo = "CloudAI-X/threejs-skills"
+path = "skills/threejs-shaders"
+
 [agent_skills.tsdown]
 repo = "rolldown/tsdown"
 path = "skills/tsdown"
@@ -1120,6 +1263,10 @@ path = "skills/tsdown"
 repo = "vercel/turborepo"
 path = "skills/turborepo"
 
+[agent_skills.ui-animation]
+repo = "mblode/agent-skills"
+path = "skills/ui-animation"
+
 [agent_skills.ui-styling]
 repo = "nextlevelbuilder/ui-ux-pro-max-skill"
 path = "cli/assets/skills/ui-styling"
@@ -1127,6 +1274,10 @@ path = "cli/assets/skills/ui-styling"
 [agent_skills.ui-ux-pro-max]
 repo = "nextlevelbuilder/ui-ux-pro-max-skill"
 path = ".claude/skills/ui-ux-pro-max"
+
+[agent_skills.ultracave]
+repo = "JuliusBrussee/caveman"
+path = "skills/ultracave"
 
 [agent_skills.unfreeze]
 repo = "garrytan/gstack"
@@ -1150,6 +1301,10 @@ path = "skills/using-superpowers"
 [agent_skills.v8-jit]
 repo = "vercel/next.js"
 path = ".agents/skills/v8-jit"
+
+[agent_skills.variant]
+repo = "jakubkrehel/skills"
+path = "skills/variant"
 
 [agent_skills.varlock]
 repo = "dmno-dev/varlock"
@@ -1222,6 +1377,10 @@ path = "skills/webapp-testing"
 [agent_skills.write-guide]
 repo = "vercel/next.js"
 path = ".agents/skills/write-guide"
+
+[agent_skills.write-swift]
+repo = "emilkowalski/skills"
+path = "skills/write-swift"
 
 [agent_skills.writing-changelogs]
 repo = "riekelt/technical-writer"
