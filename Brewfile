@@ -218,6 +218,8 @@ brew "release-it"
 brew "rust"
 # JVM-based programming language
 brew "scala"
+# Easily detect and prevent bugs and anti-patterns in your codebase
+brew "semgrep"
 # Static analysis and lint tool, for (ba)sh scripts
 brew "shellcheck"
 # Autoformat shell script source code
